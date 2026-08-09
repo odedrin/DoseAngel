@@ -14,6 +14,7 @@ import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useStopwatch } from '@/store/StopwatchContext';
 import { TypeCard } from '@/components/TypeCard';
 import { TypeEditorModal } from '@/components/TypeEditorModal';
+import { SubstanceDurationEditorModal } from '@/components/SubstanceDurationEditorModal';
 import { InteractionWarningModal } from '@/components/InteractionWarningModal';
 import { RedoseWarningModal } from '@/components/RedoseWarningModal';
 import { useInteractionGuard } from '@/hooks/use-interaction-guard';
@@ -38,6 +39,8 @@ export function TypesSection({ isDark }: Props) {
     toggleFavorite,
     hideType,
     unhideType,
+    setSubstanceDurations,
+    resetSubstanceDurations,
   } = useStopwatch();
 
   const {
@@ -48,21 +51,56 @@ export function TypesSection({ isDark }: Props) {
 
   const [editorVisible, setEditorVisible] = useState(false);
   const [editTarget, setEditTarget]       = useState<StopwatchType | null>(null);
+  const [creatingSubstance, setCreatingSubstance] = useState(false);
   const [hiddenExpanded, setHiddenExpanded] = useState(false);
+
+  const [durationEditorVisible, setDurationEditorVisible] = useState(false);
+  const [durationEditTarget, setDurationEditTarget]       = useState<StopwatchType | null>(null);
 
   const subColor    = isDark ? '#9BA1A6' : '#687076';
   const cardBg       = isDark ? '#1E2022' : '#F5F5F7';
   const borderColor  = isDark ? '#2A2D2F' : '#E5E5EA';
+  const tint          = isDark ? '#4ECDC4' : '#2BBDB4';
 
   function openEditor(type: StopwatchType) {
     setEditTarget(type);
+    setCreatingSubstance(false);
     setEditorVisible(true);
   }
 
-  function handleSave(type: Omit<StopwatchType, 'id'> | StopwatchType) {
-    if ('id' in type) updateType(type as StopwatchType);
-    else addType(type);
+  function openNewSubstanceEditor() {
+    setEditTarget(null);
+    setCreatingSubstance(true);
+    setEditorVisible(true);
+  }
+
+  function closeEditor() {
     setEditorVisible(false);
+    setCreatingSubstance(false);
+  }
+
+  function handleSave(type: Omit<StopwatchType, 'id'> | StopwatchType) {
+    if ('id' in type) {
+      updateType(type as StopwatchType);
+    } else {
+      addType(creatingSubstance ? { ...type, isSubstance: true } : type);
+    }
+    closeEditor();
+  }
+
+  function openDurationEditor(type: StopwatchType) {
+    setDurationEditTarget(type);
+    setDurationEditorVisible(true);
+  }
+
+  function handleSaveDurations(durations: { onsetDuration: number; comeupDuration: number; peakDuration: number; offsetDuration: number }) {
+    if (durationEditTarget) setSubstanceDurations(durationEditTarget.id, durations);
+    setDurationEditorVisible(false);
+  }
+
+  function handleResetDurations() {
+    if (durationEditTarget) resetSubstanceDurations(durationEditTarget.id);
+    setDurationEditorVisible(false);
   }
 
   function handleDelete(type: StopwatchType) {
@@ -112,6 +150,7 @@ export function TypesSection({ isDark }: Props) {
         activeCount={state.activeStopwatches.filter(sw => sw.typeId === item.id).length}
         onStart={handleStart}
         onEdit={openEditor}
+        onEditDurations={openDurationEditor}
         onDelete={handleDelete}
         onToggleFavorite={toggleFavorite}
         onHide={hideType}
@@ -136,12 +175,17 @@ export function TypesSection({ isDark }: Props) {
         </>
       )}
 
-      {substanceTypes.length > 0 && (
-        <>
-          <Text style={[styles.sectionLabel, { color: subColor }]}>Substances</Text>
-          {substanceTypes.map(renderCard)}
-        </>
-      )}
+      <View style={styles.sectionHeaderRow}>
+        <Text style={[styles.sectionLabel, { color: subColor }]}>Substances</Text>
+        <TouchableOpacity
+          onPress={openNewSubstanceEditor}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          style={styles.addSubstanceBtn}
+        >
+          <Text style={[styles.addSubstanceBtnText, { color: tint }]}>+ Add Substance</Text>
+        </TouchableOpacity>
+      </View>
+      {substanceTypes.map(renderCard)}
 
       {/* Collapsible Hidden section (nested disclosure, unrelated to the
           sticky Types toggle in Settings — same pattern as before) */}
@@ -169,6 +213,7 @@ export function TypesSection({ isDark }: Props) {
               activeCount={state.activeStopwatches.filter(sw => sw.typeId === item.id).length}
               onStart={handleStart}
               onEdit={openEditor}
+              onEditDurations={openDurationEditor}
               onDelete={handleDelete}
               onToggleFavorite={toggleFavorite}
               onHide={() => unhideType(item.id)}
@@ -182,8 +227,19 @@ export function TypesSection({ isDark }: Props) {
       <TypeEditorModal
         visible={editorVisible}
         initial={editTarget}
+        creatingSubstance={creatingSubstance}
         onSave={handleSave}
-        onClose={() => setEditorVisible(false)}
+        onClose={closeEditor}
+        isDark={isDark}
+      />
+
+      <SubstanceDurationEditorModal
+        visible={durationEditorVisible}
+        type={durationEditTarget}
+        hasOverride={durationEditTarget ? Boolean(state.durationOverrides?.[durationEditTarget.id]) : false}
+        onSave={handleSaveDurations}
+        onReset={handleResetDurations}
+        onClose={() => setDurationEditorVisible(false)}
         isDark={isDark}
       />
 
@@ -222,6 +278,19 @@ const styles = StyleSheet.create({
     paddingTop: 14,
     paddingBottom: 6,
     opacity: 0.6,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingRight: 20,
+  },
+  addSubstanceBtn: {
+    paddingVertical: 4,
+  },
+  addSubstanceBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
   },
   hiddenSection: {
     marginTop: 20,

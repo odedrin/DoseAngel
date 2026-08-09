@@ -413,11 +413,11 @@
       <h1>Dose<span>Angel</span></h1>
       <p style="color:var(--sub); font-size:16px;">User Guide &amp; Product Documentation</p>
       <div class="meta-pills">
-        <span class="pill">v1.7</span>
+        <span class="pill">v1.8</span>
         <span class="pill">iOS / Android</span>
         <span class="pill">React Native + Expo</span>
         <span class="pill">Fully offline</span>
-        <span class="pill">July 2026</span>
+        <span class="pill">August 2026</span>
       </div>
     </div>
 
@@ -574,7 +574,7 @@
       </div>
 
       <h3>Substance types</h3>
-      <p>A third category — <strong>substance types</strong> — ships bundled with the app. These are read-only profiles derived from PsychonautWiki pharmacokinetic data (oral ROA midpoints unless otherwise noted). They behave like built-in types in that they cannot be deleted or edited, but they are displayed separately under a <strong>Substances</strong> section in both the Substances Library (Settings → Manage) and the Add Stopwatch sheet.</p>
+      <p>A third category — <strong>substance types</strong> — ships bundled with the app. These are profiles derived from PsychonautWiki pharmacokinetic data (oral ROA midpoints unless otherwise noted). They behave like built-in types in that they cannot be deleted, renamed, or recolored, but unlike other built-ins their phase durations can be edited in place via the ✎ button (see §4.4/§4.6). They are displayed separately under a <strong>Substances</strong> section in both the Substances Library (Settings → Manage) and the Add Stopwatch sheet. Users can also add their own substances from scratch (+ Add Substance), which land in the same section but are fully editable/deletable since they aren't built-in.</p>
       <p>The 18 bundled substances are:</p>
       <ul>
         <li><strong>Empathogens:</strong> MDMA, MDA</li>
@@ -587,7 +587,7 @@
       <p>Substance types are never stored in AsyncStorage — they are always merged from code at hydration time so that bundled data updates automatically when the app is updated.</p>
 
       <h3>Custom types</h3>
-      <p>Custom types appear <strong>above</strong> built-in types in the Substances Library and can be edited or deleted at any time. Create one from scratch via the editor, or tap <strong>Customize</strong> on any built-in to duplicate it.</p>
+      <p>Custom types appear <strong>above</strong> built-in types in the Substances Library and can be edited or deleted at any time. A plain custom type is created by tapping <strong>Customize</strong> on any built-in to duplicate it (there's no from-scratch editor for the generic Custom section yet). Substances are the exception — see §4.4 — they have their own <strong>+ Add Substance</strong> from-scratch flow.</p>
     </section>
 
     <!-- ── 4. Screens ── -->
@@ -716,15 +716,12 @@
       </ol>
 
       <div class="callout">Badges on this screen are shown unconditionally, even if <strong>Interaction Badges</strong> is turned off in Settings. That toggle only controls the incidental badges in the Add Stopwatch sheet and Substances Library — Combos exists specifically to check combinations, so it never hides that information.</div>
-
-      <h4>Quick access from Live</h4>
-      <p>When 2 or more substances are currently running, a small <strong>⚠ Check Combo</strong> button appears in the "Running now" card header on the Live screen. Tapping it jumps straight to the Combos tab with those substances pre-selected, so the explanation card is visible immediately.</p>
     </section>
 
     <!-- ── 4.4 Substances ── -->
     <section id="substances">
       <h2><span class="sec-num">4.4</span> Substance Database</h2>
-      <p>The Substances Library (in Settings) has a third section — <strong>Substances</strong> — showing the 18 read-only profiles bundled with the app. These cannot be edited or deleted, but you can copy one via <strong>Customize</strong> to create an editable variant.</p>
+      <p>The Substances Library (in Settings) has a third section — <strong>Substances</strong> — showing the 18 profiles bundled with the app. Their names, colors, and curve shapes are locked, but tapping <strong>✎</strong> on a card opens a wheel-picker editor for that substance's phase durations (onset/comeup/peak/offset) — edited in place, not a copy. Tap <strong>Customize</strong> instead to duplicate a bundled substance into a fully independent, fully-editable custom type. Tap <strong>+ Add Substance</strong> at the top of this section to build a brand-new substance from scratch (full editor: name, color, durations, peak value, onset fraction, curve shapes) — it's categorized and displayed alongside the bundled ones, but is entirely user-owned and can be edited or deleted freely.</p>
 
       <h4>PK data quality</h4>
       <p>All durations are population midpoints sourced from <strong>PsychonautWiki</strong> and cross-referenced with TripSit. They represent typical oral ROA timings (exceptions: DMT is smoked, Ketamine is intranasal, Cocaine is insufflated, Nicotine is smoked, Cannabis smoked vs. edible are separate profiles). Individual responses vary significantly with dose, bodyweight, tolerance, and metabolism.</p>
@@ -811,15 +808,16 @@
       <h4>Substances Library</h4>
       <p>Formerly a standalone <strong>Types</strong> tab — now a collapsible section embedded directly in Settings, collapsed by default behind a single <strong>Manage</strong> row that shows a live count of configured types (e.g. "12 types configured"). Tapping the row, or its ▼ / ▲ chevron, expands the full type-management list in place; there is no separate screen to navigate to.</p>
       <p>While expanded, the <strong>Manage</strong> row is <strong>sticky</strong>: as you scroll down through the type list, the row stays pinned to the top of the screen so it can be collapsed again from anywhere without first scrolling back up. Collapsing it returns Settings to its normal single-row footprint.</p>
-      <p>Expanded sections, in order: <strong>Custom</strong> (your types, shown first), <strong>Built-in</strong> (the two presets), and <strong>Substances</strong>. Types you've hidden appear in a nested, non-sticky collapsible <strong>Hidden</strong> section at the bottom — independent of the outer sticky toggle.</p>
+      <p>Expanded sections, in order: <strong>Custom</strong> (your types, shown first), <strong>Built-in</strong> (the two presets), and <strong>Substances</strong>. The Substances section header carries its own <strong>+ Add Substance</strong> button (see §4.4) for building a new substance from scratch. Types you've hidden appear in a nested, non-sticky collapsible <strong>Hidden</strong> section at the bottom — independent of the outer sticky toggle.</p>
       <p><strong>Type cards.</strong> Each card shows the type name, a mini sparkline curve preview, total duration, a four-phase breakdown table (duration and proportion per phase), and a segmented proportion bar. Action buttons:</p>
       <ul>
         <li><strong>▶ Start</strong> — starts an instance directly from here. Triggers a haptic tap on confirmation. If the type is a substance and interaction warnings are enabled, an interaction check runs first; if redose warnings are enabled, a redose check runs too (see §4.5).</li>
-        <li><strong>Customize / Edit</strong> — opens the type editor</li>
+        <li><strong>Customize / Edit</strong> — opens the full type editor (<code>TypeEditorModal</code>). For a built-in, this duplicates it into a new, independent, fully-editable custom type ("Customize"). For anything not built-in — a custom type, or a substance created via + Add Substance — this edits it in place, including its name ("Edit Type").</li>
+        <li><strong>✎</strong> — (bundled substances only, i.e. <code>isSubstance &amp;&amp; isBuiltIn</code>) opens the restricted duration-only editor (<code>SubstanceDurationEditorModal</code>) — wheel/drum pickers for onset, comeup, peak, and offset, with a tap-to-type keyboard override for exact values. Name, color, and curve shapes stay locked. Edits are applied in place and persisted as a <code>durationOverride</code> (see §7 State model), not a copy. A "Reset to default timing" link appears once a substance has been customized this way.</li>
         <li><strong>Hide</strong> — moves the type card to the collapsible Hidden section. The type still works normally; it just de-clutters the main list.</li>
-        <li><strong>✕</strong> — deletes the type (custom only; confirmation required)</li>
+        <li><strong>✕</strong> — deletes the type (any non-built-in type — custom types and user-created substances; confirmation required)</li>
         <li><strong>★ / ☆</strong> — toggles favorite. Favorited types appear first in the add-stopwatch sheet.</li>
-        <li><strong>↗</strong> — (substance types only) opens the substance's PsychonautWiki article in the system browser.</li>
+        <li><strong>ⓘ</strong> — (bundled substances only) opens the substance's PsychonautWiki article in the system browser. Not shown for user-created substances, since their names won't reliably resolve to a real wiki page.</li>
       </ul>
       <p>If any instances of a type are currently running, a small count badge (pill in the type's color) appears next to the name.</p>
       <p><strong>Hiding a type.</strong> Tap <strong>Hide</strong> on any type card to remove it from its section without deleting it. The type keeps all its settings and can still be started from the Add Stopwatch sheet. A collapsible <strong>Hidden (n)</strong> section appears at the bottom of the list. Expand it to see all hidden types; each card shows an <strong>Unhide</strong> button that returns the type to its original section. Hidden state is persisted in AsyncStorage.</p>
@@ -953,7 +951,8 @@
 <span class="file">├── StopwatchCard.tsx         </span><span class="comment">— Card with progress bar</span>
 <span class="file">├── TypeCard.tsx              </span><span class="comment">— Card with sparkline</span>
 <span class="file">├── TypesSection.tsx          </span><span class="comment">— Full type-management UI (list, add/edit/favorite/hide/delete). Formerly the standalone Types screen; now embedded inline inside Settings' Substances Library section — no SafeAreaView/ScrollView of its own</span>
-<span class="file">├── TypeEditorModal.tsx       </span><span class="comment">— Type create/edit form</span>
+<span class="file">├── TypeEditorModal.tsx       </span><span class="comment">— Full type create/edit form (name, color, durations, peak value, onset fraction, curve shapes). Used for custom types, duplicating a built-in via Customize, and + Add Substance (creatingSubstance prop tags the result isSubstance)</span>
+<span class="file">├── SubstanceDurationEditorModal.tsx</span><span class="comment">— Restricted in-place editor for a bundled substance's phase durations only (name/color/shapes locked). Wheel/drum pickers via TimePickers' DurationPicker</span>
 <span class="file">├── AddStopwatchModal.tsx     </span><span class="comment">— Bottom sheet: start a stopwatch</span>
 <span class="file">├── EditStopwatchStartModal.tsx</span><span class="comment">— Bottom sheet: edit running stopwatch start time</span>
 <span class="file">├── AddPlanEntryModal.tsx      </span><span class="comment">— Bottom sheet: add plan entry. Accepts <code>modal?: boolean</code> (default true) to render as an absoluteFill overlay instead of a native Modal when nested inside another one</span>
@@ -961,7 +960,7 @@
 <span class="file">├── CreatePlanModal.tsx        </span><span class="comment">— "New Plan" sheet: name + staged add/edit/delete substances, nests AddPlanEntryModal/EditPlanEntryModal/InteractionWarningModal with <code>modal={false}</code></span>
 <span class="file">├── EditPlanModal.tsx          </span><span class="comment">— "Edit Plan" sheet: same staged UI as CreatePlanModal, pre-filled from the live plan, plus Save and Delete Plan</span>
 <span class="file">├── PlanEntryEditor.tsx        </span><span class="comment">— Shared editor UI for plan entry timing (all three anchor modes)</span>
-<span class="file">├── TimePickers.tsx            </span><span class="comment">— HH:MM clock picker and minute-adjustment controls</span>
+<span class="file">├── TimePickers.tsx            </span><span class="comment">— HH:MM clock picker, minute-adjustment controls, and DurationPicker (H:MM wheel/drum for phase durations, used by SubstanceDurationEditorModal)</span>
 <span class="file">├── InteractionWarningModal.tsx</span><span class="comment">— Blocking popup for drug interaction warnings (start / add flows). Accepts <code>modal?: boolean</code> for the same nested-overlay use case</span>
 <span class="file">├── RedoseWarningModal.tsx     </span><span class="comment">— Blocking popup shown when starting a type that's already active and hasn't peaked yet. Accepts <code>modal?: boolean</code> for the same nested-overlay use case</span>
 <span class="file">└── InteractionWarnings.tsx    </span><span class="comment">— Persistent warnings panel (rendered in Plan Mode)</span>
@@ -998,15 +997,16 @@
   showInteractionBadges:   boolean;                // toggle for ⚠ badges in type lists (default: true)
   showRedoseWarnings:      boolean;                // toggle for redose-before-peak warning popups (default: true)
   planOverlayMode:         'markers' | 'curves';  // how toggled-on plans appear on the Live screen
+  durationOverrides:       Record&lt;string, DurationOverride&gt;; // user-edited phase durations for built-in/substance types, keyed by id
 }</code></pre>
-      <div class="callout">State is persisted to <strong>AsyncStorage</strong> on every change and rehydrated on launch. Built-in types (<code>isBuiltIn: true</code>) and substance types (<code>isSubstance: true</code>) are always restored from code at hydration and are never saved to AsyncStorage — only custom types are merged from storage. This means bundled data updates automatically when the app version is updated.</div>
+      <div class="callout">State is persisted to <strong>AsyncStorage</strong> on every change and rehydrated on launch. Built-in types (<code>isBuiltIn: true</code>) and substance types (<code>isSubstance: true</code>) are always re-sourced from code at hydration — not read back from storage — so bundled data updates (corrected timings, new curve shapes) apply automatically when the app is updated. The one exception is <code>durationOverrides</code>: if a user has edited a substance's phase durations via the ✎ editor, that override <em>is</em> persisted separately and re-applied on top of the fresh bundle data at hydration, so the edit survives restarts without blocking future bundle corrections to substances the user never touched.</div>
 
       <h3>StopwatchType flags</h3>
       <table>
         <thead><tr><th>Flag</th><th>Meaning</th></tr></thead>
         <tbody>
-          <tr><td><code>isBuiltIn?: true</code></td><td>Cannot be deleted or edited in the UI. Quick and Extended presets, plus all substance types, carry this flag.</td></tr>
-          <tr><td><code>isSubstance?: true</code></td><td>Part of the bundled harm-reduction substance database. Shown in a separate "Substances" section. Implies <code>isBuiltIn</code>. Used to identify substance pairs for interaction checks.</td></tr>
+          <tr><td><code>isBuiltIn?: true</code></td><td>Cannot be deleted, renamed, recolored, or have its curve shapes changed in the UI. Quick and Extended presets, plus all substance types, carry this flag. Substance types additionally allow their phase durations to be edited in place (see <code>durationOverrides</code> above).</td></tr>
+          <tr><td><code>isSubstance?: true</code></td><td>Shown in the "Substances" section. Used to identify substance pairs for interaction checks. Set on the 18 bundled profiles (which also carry <code>isBuiltIn</code>) as well as any substance a user creates from scratch via + Add Substance (which does not carry <code>isBuiltIn</code>, and so is fully editable/deletable).</td></tr>
         </tbody>
       </table>
 
@@ -1168,18 +1168,18 @@ interface PlanMarker {
           <p>Warn when the same substance is being redosed unusually often or too many times, independent of the pairwise interaction checker. This targets tolerance buildup and cumulative toxicity risk from repeated dosing of a single substance, rather than combinations between different substances. Thresholds and exact framing (per-session count, minimum interval, rolling time window) still to be defined. Distinct from the shipped redose-before-peak check (§4.5): this would track dosing frequency over a whole session, not just whether the immediately prior dose has peaked.</p>
         </div>
         <div class="roadmap-item">
-          <strong>Add mephedrone (3-MMC / 4-MMC) as a built-in substance</strong>
-          <p>Not currently in the built-in substance list in constants/substanceDB.ts, though it already appears in the combos.json interaction database. Add it as an isBuiltIn substance type with onset/comeup/peak/offset curve parameters sourced from published duration data. Users can already track it today as a custom type in the meantime.</p>
-        </div>
-        <div class="roadmap-item">
           <strong>Home screen widget</strong>
           <p>iOS and Android home screen widget showing the live curve and current status (active substance, phase, time to next milestone) without opening the app. On iOS, pair with a Live Activity for Lock Screen and Dynamic Island display while a substance is active. Fully on-device, no data leaves the phone, consistent with the app's offline-only design.</p>
+        </div>
+        <div class="roadmap-item">
+          <strong>User-defined interactions</strong>
+          <p>Let users add their own interaction/combo entries — severity, description, source note — for pairs not covered by the curated TripSit-sourced INTERACTIONS database. Most relevant for substances created via + Add Substance, which currently have no interaction data at all and won't trigger warnings or show up in Combos. Would need a clear visual distinction from the curated, sourced entries (e.g. an "unverified / self-reported" badge) so users don't mistake a personal note for a vetted harm-reduction source.</p>
         </div>
       </div>
     </section>
 
     <footer>
-      DoseAngel User Guide &amp; Product Documentation &nbsp;·&nbsp; v1.7 &nbsp;·&nbsp; July 2026
+      DoseAngel User Guide &amp; Product Documentation &nbsp;·&nbsp; v1.8 &nbsp;·&nbsp; August 2026
     </footer>
 
   </main>

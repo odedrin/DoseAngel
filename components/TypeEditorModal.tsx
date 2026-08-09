@@ -178,9 +178,11 @@ interface Props {
   onSave: (type: Omit<StopwatchType, 'id'> | StopwatchType) => void;
   onClose: () => void;
   isDark: boolean;
+  /** When true and `initial` is unset, this is a brand-new substance (not a generic custom type). Only affects header copy and default naming. */
+  creatingSubstance?: boolean;
 }
 
-export function TypeEditorModal({ visible, initial, onSave, onClose, isDark }: Props) {
+export function TypeEditorModal({ visible, initial, onSave, onClose, isDark, creatingSubstance = false }: Props) {
   const [name, setName] = useState('New Type');
   const [color, setColor] = useState(TYPE_COLORS[0]);
   const [onset, setOnset] = useState(15);       // minutes
@@ -207,6 +209,20 @@ export function TypeEditorModal({ visible, initial, onSave, onClose, isDark }: P
       setOnsetShape(initial.onsetShape);
       setComeupShape(initial.comeupShape);
       setOffsetShape(initial.offsetShape);
+    } else if (visible) {
+      // Fresh "create new" open — reset every field to sensible defaults so
+      // leftover values from a previous edit/customize session don't linger.
+      setName('');
+      setColor(TYPE_COLORS[0]);
+      setOnset(15);
+      setComeup(30);
+      setPeak(60);
+      setOffset(90);
+      setPeakValue(7);
+      setOnsetFrac(25);
+      setOnsetShape('easeIn');
+      setComeupShape('easeOut');
+      setOffsetShape('sigmoid');
     }
   }, [initial, visible]);
 
@@ -278,7 +294,7 @@ export function TypeEditorModal({ visible, initial, onSave, onClose, isDark }: P
               <Text style={[styles.headerBtn, { color: subColor }]}>Cancel</Text>
             </TouchableOpacity>
             <Text style={[styles.headerTitle, { color: textColor }]}>
-              {!initial ? 'New Type' : initial.isBuiltIn ? 'Customize' : 'Edit Type'}
+              {!initial ? (creatingSubstance ? 'New Substance' : 'New Type') : initial.isBuiltIn ? 'Customize' : 'Edit Type'}
             </Text>
             <TouchableOpacity onPress={handleSave}>
               <Text style={[styles.headerBtn, { color: color, fontWeight: '700' }]}>Save</Text>

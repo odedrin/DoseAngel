@@ -21,6 +21,8 @@ interface Props {
   onStart: (typeId: string) => void;
   /** Called for both "Customize" (built-in) and "Edit" (custom) */
   onEdit: (type: StopwatchType) => void;
+  /** Opens the in-place phase-duration editor. Only shown for isSubstance types. */
+  onEditDurations?: (type: StopwatchType) => void;
   onDelete?: (type: StopwatchType) => void;
   onToggleFavorite: (typeId: string) => void;
   onHide?: (typeId: string) => void;
@@ -59,7 +61,7 @@ function MiniCurve({ type }: { type: StopwatchType }) {
   );
 }
 
-export function TypeCard({ type, isDark, isFavorite, activeCount, dragHandle, onStart, onEdit, onDelete, onToggleFavorite, onHide, hideLabel = 'Hide', warningStatus }: Props) {
+export function TypeCard({ type, isDark, isFavorite, activeCount, dragHandle, onStart, onEdit, onEditDurations, onDelete, onToggleFavorite, onHide, hideLabel = 'Hide', warningStatus }: Props) {
   const textColor = isDark ? '#ECEDEE' : '#11181C';
   const subColor  = isDark ? '#9BA1A6' : '#687076';
   const cardBg    = isDark ? '#1E2022' : '#F5F5F7';
@@ -154,7 +156,21 @@ export function TypeCard({ type, isDark, isFavorite, activeCount, dragHandle, on
             </Text>
           </TouchableOpacity>
 
-          {type.isSubstance && (
+          {/* Restricted duration-only editor and PsychonautWiki link only make
+              sense for the app's own bundled substances — a user-created
+              substance already gets full editing via "Edit", and its name
+              wouldn't reliably resolve to a real wiki page. */}
+          {type.isSubstance && type.isBuiltIn && onEditDurations && (
+            <TouchableOpacity
+              style={styles.wikiBtn}
+              onPress={() => onEditDurations(type)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={[styles.wikiText, { color: subColor }]}>✎</Text>
+            </TouchableOpacity>
+          )}
+
+          {type.isSubstance && type.isBuiltIn && (
             <TouchableOpacity
               style={styles.wikiBtn}
               onPress={() => Linking.openURL(psychonautWikiUrl(type.name))}

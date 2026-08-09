@@ -37,6 +37,12 @@ export function effectiveElapsed(sw: ActiveStopwatch, now: number): number {
 // State & actions
 // ---------------------------------------------------------------------------
 
+/** A user-edited set of phase durations for a built-in or substance type, keyed by type id. */
+export type DurationOverride = Pick<
+  StopwatchType,
+  'onsetDuration' | 'comeupDuration' | 'peakDuration' | 'offsetDuration'
+>;
+
 export interface AppState {
   types: StopwatchType[];
   activeStopwatches: ActiveStopwatch[];
@@ -50,6 +56,14 @@ export interface AppState {
   showRedoseWarnings: boolean;
   /** How plans are overlaid on the live graph. Default: 'markers'. */
   planOverlayMode: 'markers' | 'curves';
+  /**
+   * User-edited phase durations for built-in/substance types, keyed by type id.
+   * Built-in and substance types are otherwise always re-sourced from the code
+   * bundle on hydration (so shipped data-corrections apply automatically) — an
+   * entry here is layered on top of that fresh data so a user's manual duration
+   * edit survives across restarts. Absent for types the user never touched.
+   */
+  durationOverrides: Record<string, DurationOverride>;
 }
 
 type Action =
@@ -78,7 +92,9 @@ type Action =
   | { type: 'SET_PLAN_OVERLAY_MODE'; payload: 'markers' | 'curves' }
   | { type: 'REORDER_TYPES'; payload: string[] }
   | { type: 'HIDE_TYPE'; payload: string }
-  | { type: 'UNHIDE_TYPE'; payload: string };
+  | { type: 'UNHIDE_TYPE'; payload: string }
+  | { type: 'SET_DURATION_OVERRIDE'; payload: { id: string; durations: DurationOverride } }
+  | { type: 'CLEAR_DURATION_OVERRIDE'; payload: string };
 
 const DEFAULT_PLAN: Plan = { id: 'plan-default', name: 'My Plan', entries: [] };
 
@@ -91,6 +107,7 @@ const INITIAL_STATE: AppState = {
   showInteractionBadges: true,
   showRedoseWarnings: true,
   planOverlayMode: 'markers',
+  durationOverrides: {},
 };
 
 function reducer(rawState: AppState, action: Action): AppState {
@@ -103,6 +120,7 @@ function reducer(rawState: AppState, action: Action): AppState {
     showInteractionBadges: rawState.showInteractionBadges ?? true,
     showRedoseWarnings: rawState.showRedoseWarnings ?? true,
     planOverlayMode: rawState.planOverlayMode ?? 'markers',
+    durationOverrides: rawState.durationOverrides ?? {},
   };
   switch (action.type) {
     case 'HYDRATE':
@@ -336,6 +354,37 @@ function reducer(rawState: AppState, action: Action): AppState {
         ),
       };
 
+    case 'SET_DURATION_OVERRIDE': {
+      const { id, durations } = action.payload;
+      return {
+        ...state,
+        types: state.types.map(t => t.id === id ? { ...t, ...durations } : t),
+        durationOverrides: { ...state.durationOverrides, [id]: durations },
+      };
+    }
+
+    case 'CLEAR_DURATION_OVERRIDE': {
+      const id = action.payload;
+      const fresh = DEFAULT_TYPES.find(t => t.id === id) ?? SUBSTANCE_TYPES.find(t => t.id === id);
+      const { [id]: _removed, ...rest } = state.durationOverrides;
+      if (!fresh) return { ...state, durationOverrides: rest };
+      return {
+        ...state,
+        types: state.types.map(t =>
+          t.id === id
+            ? {
+                ...t,
+                onsetDuration: fresh.onsetDuration,
+                comeupDuration: fresh.comeupDuration,
+                peakDuration: fresh.peakDuration,
+                offsetDuration: fresh.offsetDuration,
+              }
+            : t,
+        ),
+        durationOverrides: rest,
+      };
+    }
+
     default:
       return state;
   }
@@ -365,6 +414,10 @@ export interface StopwatchContextValue {
   toggleInteractionBadges: () => void;
   toggleRedoseWarnings: () => void;
   setPlanOverlayMode: (mode: 'markers' | 'curves') => void;
+  /** Edits a built-in/substance type's phase durations in place, persisting across restarts. */
+  setSubstanceDurations: (id: string, durations: DurationOverride) => void;
+  /** Reverts a previously-edited type's phase durations back to the bundled default. */
+  resetSubstanceDurations: (id: string) => void;
   // Plans
   addPlan: (name: string) => void;
   /** Creates a plan with an initial batch of entries (each with its own target time) in a single update. Returns the new plan's id. */
@@ -408,17 +461,28 @@ export function StopwatchProvider({ children }: { children: React.ReactNode }) {
           // Preserve user-defined ordering of built-in and substance types.
           // Re-source data from the bundle (so name/color/curve updates apply),
           // but keep the saved order. Append any brand-new bundle types at the end.
+          // Any user-edited phase durations (durationOverrides) are layered back
+          // on top of the fresh bundle data so edits survive the re-source.
           const savedIds = new Set((saved.types ?? []).map(t => t.id));
+          const durationOverrides = saved.durationOverrides ?? {};
           const orderedBuiltIns = [
             ...(saved.types ?? [])
               .filter(t => DEFAULT_TYPES.some(d => d.id === t.id))
-              .map(t => ({ ...DEFAULT_TYPES.find(d => d.id === t.id)!, hidden: t.hidden })),
+              .map(t => ({
+                ...DEFAULT_TYPES.find(d => d.id === t.id)!,
+                hidden: t.hidden,
+                ...(durationOverrides[t.id] ?? {}),
+              })),
             ...DEFAULT_TYPES.filter(t => !savedIds.has(t.id)),
           ];
           const orderedSubstances = [
             ...(saved.types ?? [])
               .filter(t => SUBSTANCE_TYPES.some(s => s.id === t.id))
-              .map(t => ({ ...SUBSTANCE_TYPES.find(s => s.id === t.id)!, hidden: t.hidden })),
+              .map(t => ({
+                ...SUBSTANCE_TYPES.find(s => s.id === t.id)!,
+                hidden: t.hidden,
+                ...(durationOverrides[t.id] ?? {}),
+              })),
             ...SUBSTANCE_TYPES.filter(t => !savedIds.has(t.id)),
           ];
 
@@ -547,6 +611,14 @@ export function StopwatchProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: 'SET_PLAN_OVERLAY_MODE', payload: mode });
   }, []);
 
+  const setSubstanceDurations = useCallback((id: string, durations: DurationOverride) => {
+    dispatch({ type: 'SET_DURATION_OVERRIDE', payload: { id, durations } });
+  }, []);
+
+  const resetSubstanceDurations = useCallback((id: string) => {
+    dispatch({ type: 'CLEAR_DURATION_OVERRIDE', payload: id });
+  }, []);
+
   const addPlan = useCallback((name: string) => {
     dispatch({ type: 'ADD_PLAN', payload: { id: genId(), name, entries: [] } });
   }, []);
@@ -600,6 +672,7 @@ export function StopwatchProvider({ children }: { children: React.ReactNode }) {
       startStopwatch, stopStopwatch, pauseStopwatch, resumeStopwatch, updateStopwatchStartTime,
       addType, updateType, deleteType, getTypeById, evaluateSum,
       toggleFavorite, reorderTypes, hideType, unhideType, toggleInteractionWarnings, toggleInteractionBadges, toggleRedoseWarnings, setPlanOverlayMode,
+      setSubstanceDurations, resetSubstanceDurations,
       addPlan, createPlanWithEntries, renamePlan, deletePlan,
       addPlanEntry, removePlanEntry, updatePlanEntry, savePlanEdits,
     }}>

@@ -11,7 +11,6 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
 import { effectiveElapsed, useStopwatch } from '@/store/StopwatchContext';
@@ -24,7 +23,7 @@ import {
 import { Graph, GraphNavBar } from '@/components/Graph';
 import { EditStopwatchStartModal } from '@/components/EditStopwatchStartModal';
 import { AddStopwatchModal } from '@/components/AddStopwatchModal';
-import type { GraphRef, PlanCurve, PlanMarker } from '@/components/Graph';
+import type { GraphEntry, GraphRef, PlanCurve, PlanMarker } from '@/components/Graph';
 import { useTourTarget } from '@/store/tourTargets';
 
 if (
@@ -39,7 +38,6 @@ const TICK_MS = 1000;
 export default function LiveGraphScreen() {
   const colorScheme = useColorScheme() ?? 'light';
   const isDark = colorScheme === 'dark';
-  const router = useRouter();
   const { state, stopStopwatch, updateStopwatchStartTime } = useStopwatch();
 
   const [now, setNow] = useState(Date.now);
@@ -56,6 +54,10 @@ export default function LiveGraphScreen() {
   // Multi-select state
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  // Graph visibility — which active stopwatches are excluded from the graph.
+  // Tapping a legend row (outside select mode) toggles membership here.
+  const [hiddenGraphIds, setHiddenGraphIds] = useState<Set<string>>(new Set());
 
   // Edit modal state
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -87,13 +89,34 @@ export default function LiveGraphScreen() {
     }
   }, [state.activeStopwatches.length]);
 
-  // Distinct running substances — drives the quick-access Interactions button.
-  const activeSubstanceCount = useMemo(() => new Set(
+  // Entries actually fed to the graph — active stopwatches minus any the
+  // user has hidden via a legend row tap. Always passed explicitly (rather
+  // than leaving Graph to default to all active stopwatches) so hiding stays
+  // in sync with the off-screen indicators below.
+  const graphEntries: GraphEntry[] = useMemo(() => (
     state.activeStopwatches
-      .map(sw => state.types.find(t => t.id === sw.typeId))
-      .filter(t => t?.isSubstance)
-      .map(t => t!.id),
-  ).size, [state.activeStopwatches, state.types]);
+      .filter(sw => !hiddenGraphIds.has(sw.id))
+      .flatMap(sw => {
+        const tp = state.types.find(t => t.id === sw.typeId);
+        if (!tp) return [];
+        return [{ type: tp, startTime: now - effectiveElapsed(sw, now) }];
+      })
+  ), [state.activeStopwatches, state.types, hiddenGraphIds, now]);
+
+  const toggleGraphVisibility = useCallback((id: string) => {
+    setHiddenGraphIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const handleToggleAllGraph = useCallback(() => {
+    setHiddenGraphIds(prev =>
+      prev.size > 0 ? new Set() : new Set(state.activeStopwatches.map(sw => sw.id)),
+    );
+  }, [state.activeStopwatches]);
 
   const earliestStart = state.activeStopwatches.length > 0
     ? Math.min(...state.activeStopwatches.map(sw => sw.startTime))
@@ -255,6 +278,7 @@ export default function LiveGraphScreen() {
             currentTime={now}
             height={320}
             colorScheme={colorScheme}
+          overrideEntries={graphEntries}
           planMarkers={planMarkers.length > 0 ? planMarkers : undefined}
           planCurves={planCurves.length > 0 ? planCurves : undefined}
           onIsPanned={setIsGraphPanned}
@@ -266,6 +290,7 @@ export default function LiveGraphScreen() {
         {(() => {
           if (!visibleWindow) return null;
           const offLeft = state.activeStopwatches.filter(sw => {
+            if (hiddenGraphIds.has(sw.id)) return false;
             const type = state.types.find(t => t.id === sw.typeId);
             if (!type) return false;
             return (now - effectiveElapsed(sw, now)) + totalDuration(type) < visibleWindow.start;
@@ -273,6 +298,7 @@ export default function LiveGraphScreen() {
             + planMarkers.filter(m => m.startTime < visibleWindow.start).length
             + planCurves.filter(c => c.startTime + totalDuration(c.type) < visibleWindow.start).length;
           const offRight = state.activeStopwatches.filter(sw => {
+            if (hiddenGraphIds.has(sw.id)) return false;
             const type = state.types.find(t => t.id === sw.typeId);
             if (!type) return false;
             return (now - effectiveElapsed(sw, now)) > visibleWindow.end;
@@ -323,18 +349,16 @@ export default function LiveGraphScreen() {
               </Text>
             </View>
             <View style={styles.legendHeaderActions}>
-              {!legendCollapsed && activeSubstanceCount >= 2 && (
-                <TouchableOpacity
-                  onPress={() => router.push('/interactions?prefill=active')}
-                  style={[styles.interactionsBtn, { borderColor: cardBorder }]}
-                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                >
-                  <Text style={styles.interactionsBtnText}>⚠ Check Combo</Text>
-                </TouchableOpacity>
-              )}
               {!legendCollapsed && isSelectMode && selectedIds.size > 0 && (
                 <TouchableOpacity onPress={handleDeleteSelected} style={styles.headerBtn}>
                   <Text style={[styles.headerBtnText, { color: '#FF3B30' }]}>Remove</Text>
+                </TouchableOpacity>
+              )}
+              {!legendCollapsed && !isSelectMode && state.activeStopwatches.length > 1 && (
+                <TouchableOpacity onPress={handleToggleAllGraph} style={styles.headerBtn}>
+                  <Text style={[styles.headerBtnText, { color: accent }]}>
+                    {hiddenGraphIds.size > 0 ? 'Show All' : 'Hide All'}
+                  </Text>
                 </TouchableOpacity>
               )}
               {!legendCollapsed && state.activeStopwatches.length > 0 && (
@@ -369,6 +393,7 @@ export default function LiveGraphScreen() {
               const phase     = currentPhase(type, elapsed);
               const progress  = progressFraction(type, elapsed);
               const isSelected = selectedIds.has(sw.id);
+              const isHiddenFromGraph = hiddenGraphIds.has(sw.id);
 
               const onsetW  = type.onsetDuration  / total;
               const comeupW = type.comeupDuration / total;
@@ -381,13 +406,14 @@ export default function LiveGraphScreen() {
                     styles.legendRow,
                     { borderBottomColor: cardBorder },
                     isSelected && { backgroundColor: isDark ? '#1C2B2B' : '#E8F8F7' },
+                    !isSelectMode && isHiddenFromGraph && styles.legendRowHidden,
                   ]}
-                  onPress={isSelectMode ? () => handleRowPress(sw.id) : undefined}
+                  onPress={isSelectMode ? () => handleRowPress(sw.id) : () => toggleGraphVisibility(sw.id)}
                   onLongPress={() => handleLongPress(sw.id)}
-                  activeOpacity={isSelectMode ? 0.6 : 1}
+                  activeOpacity={0.6}
                 >
-                  {/* Color stripe */}
-                  <View style={[styles.colorStripe, { backgroundColor: type.color }]} />
+                  {/* Color stripe — greyed out when excluded from the graph */}
+                  <View style={[styles.colorStripe, { backgroundColor: !isSelectMode && isHiddenFromGraph ? cardBorder : type.color }]} />
 
                   {/* Info block */}
                   <View style={styles.rowInfo}>
@@ -395,6 +421,11 @@ export default function LiveGraphScreen() {
                       <Text style={[styles.rowName, { color: textColor }]} numberOfLines={1}>
                         {type.name}
                       </Text>
+                      {!isSelectMode && isHiddenFromGraph && (
+                        <View style={[styles.hiddenPill, { borderColor: cardBorder }]}>
+                          <Text style={[styles.hiddenPillText, { color: subColor }]}>hidden</Text>
+                        </View>
+                      )}
                       <View style={[styles.phasePill, { borderColor: type.color }]}>
                         <Text style={[styles.phaseText, { color: type.color }]}>{phase}</Text>
                       </View>
@@ -610,17 +641,6 @@ const styles = StyleSheet.create({
   },
   headerBtn: { paddingVertical: 2 },
   headerBtnText: { fontSize: 14, fontWeight: '500' },
-  interactionsBtn: {
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  interactionsBtnText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#FF9500',
-  },
   legendList: { paddingBottom: 8 },
 
   emptyState: { padding: 28, alignItems: 'center' },
@@ -633,6 +653,21 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     paddingRight: 12,
     gap: 10,
+  },
+  legendRowHidden: {
+    opacity: 0.45,
+  },
+  hiddenPill: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    flexShrink: 0,
+  },
+  hiddenPillText: {
+    fontSize: 10,
+    fontWeight: '600',
+    letterSpacing: 0.2,
   },
   colorStripe: {
     width: 4,

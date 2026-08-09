@@ -440,6 +440,163 @@ export const ClockPicker = forwardRef<ClockPickerHandle, ClockPickerProps>(funct
 });
 
 // ---------------------------------------------------------------------------
+// DurationPicker — H:MM drum for editing a phase duration (non-circular
+// hours, circular minutes). Same tap-to-type keyboard override as ClockPicker,
+// but commits a duration in ms rather than a wall-clock time.
+// ---------------------------------------------------------------------------
+
+export interface DurationPickerHandle {
+  /** Returns the duration (ms) currently shown, including any uncommitted keyboard input. */
+  getMs: () => number;
+}
+
+interface DurationPickerProps {
+  /** Duration in ms */
+  ms: number;
+  isDark: boolean;
+  label: string;
+  onChange: (ms: number) => void;
+  /** Max selectable hours. Default 23. */
+  maxHours?: number;
+}
+
+export const DurationPicker = forwardRef<DurationPickerHandle, DurationPickerProps>(function DurationPicker({
+  ms,
+  isDark,
+  label,
+  onChange,
+  maxHours = 23,
+}, ref) {
+  const subColor  = isDark ? '#9BA1A6' : '#687076';
+  const textColor = isDark ? '#ECEDEE' : '#11181C';
+  const selBg     = isDark ? '#2A2D2F' : '#F0F0F2';
+  const selBorder = isDark ? '#3A3D3F' : '#C7C7CC';
+
+  const totalMin = Math.max(1, Math.round(ms / 60_000));
+  const hour     = Math.min(maxHours, Math.floor(totalMin / 60));
+  const minute   = totalMin % 60;
+
+  const hourItems = Array.from({ length: maxHours + 1 }, (_, i) => pad2(i));
+
+  function commitHourMinute(h: number, m: number) {
+    onChange(Math.max(60_000, (h * 60 + m) * 60_000));
+  }
+
+  // ── HHMM keyboard editing — same barrel-digit pattern as ClockPicker ────
+  const [editing, setEditing] = useState(false);
+  const [digits, setDigits]   = useState<[string, string, string, string]>(['0', '0', '0', '0']);
+  const hiddenInputRef        = useRef<TextInput>(null);
+
+  function startEdit() {
+    setDigits([
+      Math.floor(hour / 10).toString(),
+      (hour % 10).toString(),
+      Math.floor(minute / 10).toString(),
+      (minute % 10).toString(),
+    ]);
+    setEditing(true);
+    setTimeout(() => hiddenInputRef.current?.focus(), 30);
+  }
+
+  function handleKeyPress({ nativeEvent: { key } }: any) {
+    if (/^[0-9]$/.test(key)) {
+      setDigits(([d0, d1, d2, _d3]) => [d1, d2, _d3, key]);
+    }
+  }
+
+  function commitEdit() {
+    const [d0, d1, d2, d3] = digits;
+    const h = Math.min(maxHours, parseInt(d0 + d1, 10) || 0);
+    const m = Math.min(59, parseInt(d2 + d3, 10) || 0);
+    commitHourMinute(h, m);
+    setEditing(false);
+  }
+
+  useImperativeHandle(ref, () => ({
+    getMs: () => {
+      if (editing) {
+        const h = Math.min(maxHours, parseInt(digits[0] + digits[1], 10) || 0);
+        const m = Math.min(59, parseInt(digits[2] + digits[3], 10) || 0);
+        return Math.max(60_000, (h * 60 + m) * 60_000);
+      }
+      return ms;
+    },
+  }), [editing, digits, ms, maxHours]);
+
+  return (
+    <View style={styles.clockPicker}>
+      <Text style={[styles.pickerLabel, { color: subColor }]}>{label}</Text>
+      <View>
+        <View
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 4, opacity: editing ? 0 : 1 }}
+          pointerEvents={editing ? 'none' : 'auto'}
+        >
+          <View style={{ alignItems: 'center' }}>
+            <WheelPicker
+              items={hourItems}
+              extItems={hourItems}
+              selectedIndex={hour}
+              onChange={h => commitHourMinute(h, minute)}
+              isDark={isDark}
+              circular={false}
+              onCenterTap={startEdit}
+              width={76}
+            />
+            <Text style={[styles.durUnit, { color: subColor }]}>HRS</Text>
+          </View>
+          <Text style={[styles.pickerColon, { color: textColor }]}>:</Text>
+          <View style={{ alignItems: 'center' }}>
+            <WheelPicker
+              items={MINUTES}
+              extItems={EXT_MINUTES}
+              selectedIndex={minute}
+              onChange={m => commitHourMinute(hour, m)}
+              isDark={isDark}
+              circular
+              onCenterTap={startEdit}
+              width={76}
+            />
+            <Text style={[styles.durUnit, { color: subColor }]}>MIN</Text>
+          </View>
+        </View>
+
+        {editing && (
+          <View style={[StyleSheet.absoluteFillObject, { alignItems: 'center', justifyContent: 'center' }]}>
+            <View
+              pointerEvents="none"
+              style={{
+                position: 'absolute',
+                left: 4, right: 4,
+                top: ITEM_H * Math.floor(VISIBLE / 2),
+                height: ITEM_H,
+                backgroundColor: selBg,
+                borderColor: selBorder,
+                borderWidth: 1,
+                borderRadius: 10,
+              }}
+            />
+            <Text style={[styles.hhmmDisplay, { color: textColor }]}>
+              {digits[0]}{digits[1]}:{digits[2]}{digits[3]}
+            </Text>
+            <TextInput
+              ref={hiddenInputRef}
+              style={wheelSt.hiddenInput}
+              value=""
+              onChangeText={() => {}}
+              onKeyPress={handleKeyPress}
+              onBlur={commitEdit}
+              onSubmitEditing={commitEdit}
+              keyboardType="number-pad"
+              caretHidden
+            />
+          </View>
+        )}
+      </View>
+    </View>
+  );
+});
+
+// ---------------------------------------------------------------------------
 // ValueStepper
 // ---------------------------------------------------------------------------
 
@@ -564,6 +721,7 @@ export const pickerStyles = StyleSheet.create({
   pickerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4 },
   pickerColon: { fontSize: 34, fontWeight: '200', lineHeight: 44, marginBottom: 2 },
   pickerSep:   { fontSize: 20, fontWeight: '200', opacity: 0.3 },
+  durUnit:     { fontSize: 9, fontWeight: '700', letterSpacing: 0.5, marginTop: 2 },
   hhmmDisplay: {
     fontSize: 34,
     fontWeight: '300',

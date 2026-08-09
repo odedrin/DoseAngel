@@ -418,21 +418,45 @@
       </div>
 
       <!--
-        TODO (Zoho Campaigns setup):
-        1. Sign in to Zoho Campaigns (or sign up free) and create a mailing list, e.g. "DoseAngel Updates".
-        2. Go to Signup Forms → Create Signup Form → Embedded Form, pick that mailing list, keep it to just the Email field.
-        3. Save & Publish, then open the Share tab and copy the "Form Embed Code" snippet.
-        4. Paste that snippet in place of the <form class="signup-form"> block below (keep the surrounding .signup-box div).
-        5. To send updates later: Zoho Campaigns → Campaigns → Create Campaign → pick the same mailing list → compose & send.
+        Wired to the Zoho Campaigns "DoseAngel Updates" list (posts to weboptin.zc, response
+        loads into the hidden iframe below so the visitor never leaves the page).
+        To send updates: Zoho Campaigns → Campaigns → Create Campaign → pick the same list → compose & send.
       -->
       <div class="signup-box" id="updates">
         <h3>Get notified when DoseAngel launches</h3>
         <p>No spam, just a heads up when the app is live and occasional updates.</p>
-        <form class="signup-form" action="#" method="POST">
-          <input type="email" name="email" placeholder="you@example.com" required />
+        <form class="signup-form" id="signup-form" action="https://zcv2-zcmp.maillist-manage.eu/weboptin.zc" method="POST" target="zc-signup-frame">
+          <input type="email" name="CONTACT_EMAIL" placeholder="you@example.com" required />
+          <input type="hidden" name="submitType" value="optinCustomView" />
+          <input type="hidden" name="emailReportId" value="" />
+          <input type="hidden" name="formType" value="QuickForm" />
+          <input type="hidden" name="zx" value="14af087edd" />
+          <input type="hidden" name="zcvers" value="2.0" />
+          <input type="hidden" name="oldListIds" value="" />
+          <input type="hidden" name="mode" value="OptinCreateView" />
+          <input type="hidden" name="zcld" value="141606866938ce4e" />
+          <input type="hidden" name="zctd" value="1416068669385921" />
+          <input type="hidden" name="zc_trackCode" value="ZCFORMVIEW" />
+          <input type="hidden" name="zc_formIx" value="3z6882ac12b0cf4e837fcf7ea6d3476ad527f0c814a7812ef553bb1a05486eb2e9" />
           <button type="submit">Notify me</button>
         </form>
+        <p class="signup-note" id="signup-success" style="display:none;">Thanks, you're on the list. We'll email you when DoseAngel launches.</p>
+        <iframe name="zc-signup-frame" title="signup" style="display:none" aria-hidden="true"></iframe>
       </div>
+      <script>
+        (function () {
+          var form = document.getElementById('signup-form');
+          var frame = document.querySelector('iframe[name="zc-signup-frame"]');
+          var success = document.getElementById('signup-success');
+          var submitted = false;
+          form.addEventListener('submit', function () { submitted = true; });
+          frame.addEventListener('load', function () {
+            if (!submitted) return;
+            form.style.display = 'none';
+            success.style.display = 'block';
+          });
+        })();
+      </script>
     </div>
   </section>
 

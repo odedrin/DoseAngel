@@ -32,11 +32,25 @@ export const TOUR_STEPS: TourStep[] = [
     body: 'Tap + whenever you take a dose. It starts timing immediately, and you can adjust the exact time afterward if you log it a little late.',
   },
   {
+    id: 'live-favorite',
+    tab: 'explore',
+    targetId: 'live.fab',
+    title: 'Mark a favorite',
+    body: 'From that same + sheet, tap the star next to any substance to favorite it. Favorites float to the top of the list, so the ones you use most are always one tap away.',
+  },
+  {
     id: 'live-graph',
     tab: 'explore',
     targetId: 'live.graph',
     title: 'The graph on the Live screen',
     body: "Every dose you're tracking shows up here, layered together in real time. You can see what phase each one is in and how it's expected to progress.",
+  },
+  {
+    id: 'live-visibility',
+    tab: 'explore',
+    targetId: 'live.legend',
+    title: 'Show or hide a dose',
+    body: "Tap any dose in this list to drop its curve off the graph above, or tap it again to bring it back. Useful when you're tracking several things and only want to focus on one or two. Hide All / Show All does it for everything at once.",
   },
   {
     id: 'live-legend',

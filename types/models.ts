@@ -49,8 +49,10 @@ export interface StopwatchType {
   isBuiltIn?: boolean;
   /**
    * Substance types come from the bundled harm-reduction database.
-   * They cannot be deleted or edited, but can be duplicated into a custom type.
-   * Implies isBuiltIn = true for all UI purposes.
+   * They cannot be deleted or renamed, but their phase durations can be edited
+   * in place (see StopwatchContext's durationOverrides), and they can be
+   * duplicated into an independent custom type. Implies isBuiltIn = true for
+   * all UI purposes.
    */
   isSubstance?: boolean;
   /**
