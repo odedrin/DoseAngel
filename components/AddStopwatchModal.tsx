@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Linking,
   Modal,
@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native';
 
@@ -16,7 +17,10 @@ function psychonautWikiUrl(name: string): string {
 import { useStopwatch } from '@/store/StopwatchContext';
 import { InteractionWarningModal } from '@/components/InteractionWarningModal';
 import { RedoseWarningModal } from '@/components/RedoseWarningModal';
+import { Callout, SpotlightMask, useTourTargetRect } from '@/components/TourOverlay';
 import { useInteractionGuard } from '@/hooks/use-interaction-guard';
+import { useTour } from '@/store/TourContext';
+import { useTourTarget } from '@/store/tourTargets';
 import {
   getInteraction,
   INTERACTION_COLOR,
@@ -26,6 +30,12 @@ import {
 } from '@/constants/interactions';
 import type { StopwatchType } from '@/types/models';
 import { formatDuration, totalDuration } from '@/engine/curveEngine';
+
+// How long to wait after the tour asks this sheet to open before actually
+// presenting its Modal — gives TourOverlay's own Modal (for the previous
+// step) time to finish closing first, since iOS only supports one presented
+// native Modal at a time.
+const TOUR_OPEN_DELAY_MS = 380;
 
 interface Props {
   visible: boolean;
@@ -40,6 +50,7 @@ function TypeRow({
   warningStatus,
   isFavorite,
   onToggleFavorite,
+  tourTargetId,
 }: {
   item: StopwatchType;
   isDark: boolean;
@@ -47,12 +58,21 @@ function TypeRow({
   warningStatus?: InteractionStatus;
   isFavorite: boolean;
   onToggleFavorite: (typeId: string) => void;
+  /**
+   * When set, this row's star registers itself as a tour target under this
+   * id (see `live.favoriteStar` in TOUR_STEPS) — used for exactly one row
+   * (the first one rendered) so the tour has a single stable element to
+   * spotlight. Every other row registers under a throwaway id nobody looks
+   * up, so this hook can always be called unconditionally.
+   */
+  tourTargetId?: string;
 }) {
   const textColor    = isDark ? '#ECEDEE' : '#11181C';
   const subColor     = isDark ? '#9BA1A6' : '#687076';
   const rowBg        = isDark ? '#1E2022' : '#F5F5F7';
   const border       = isDark ? '#2A2D2F' : '#E5E5EA';
   const warningColor = warningStatus ? INTERACTION_COLOR[warningStatus] : undefined;
+  const starRef = useTourTarget(tourTargetId ?? `_unused:${item.id}`);
 
   return (
     <View style={[styles.row, { backgroundColor: rowBg, borderColor: border }]}>
@@ -64,6 +84,7 @@ function TypeRow({
         </Text>
       </View>
       <TouchableOpacity
+        ref={starRef}
         onPress={() => onToggleFavorite(item.id)}
         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         style={styles.starBtn}
@@ -108,6 +129,26 @@ export function AddStopwatchModal({ visible, onClose, isDark }: Props) {
     onConfirm, onCancel,
   } = useInteractionGuard();
 
+  // Onboarding tour: the "Mark a favorite" step spotlights the real star on
+  // the first row of this sheet, so it needs to be able to open the sheet
+  // itself. See store/TourContext.tsx (embeddedTarget) and TourOverlay.tsx.
+  const tour = useTour();
+  const { width: screenW, height: screenH } = useWindowDimensions();
+  const tourStep = tour.active ? tour.steps[tour.stepIndex] : null;
+  const tourWantsOpen = tourStep?.id === 'live-favorite';
+  const [tourReady, setTourReady] = useState(false);
+
+  useEffect(() => {
+    if (tourWantsOpen) {
+      const t = setTimeout(() => setTourReady(true), TOUR_OPEN_DELAY_MS);
+      return () => clearTimeout(t);
+    }
+    setTourReady(false);
+  }, [tourWantsOpen]);
+
+  const effectiveVisible = visible || tourReady;
+  const favoriteStarRect = useTourTargetRect('live.favoriteStar', tourReady, screenW, screenH);
+
   // Precompute worst interaction for each type vs currently active stopwatches
   const warningMap = useMemo(() => {
     const activeTypeIds = state.activeStopwatches.map(sw => sw.typeId);
@@ -128,8 +169,8 @@ export function AddStopwatchModal({ visible, onClose, isDark }: Props) {
 
   // Clear pending warning whenever the sheet is closed externally
   useEffect(() => {
-    if (!visible) onCancel();
-  }, [visible]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!effectiveVisible) onCancel();
+  }, [effectiveVisible]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Start a type: close the sheet only if no interaction warning was triggered.
   // If a warning was triggered, the sheet stays open and the warning modal appears on top.
@@ -138,10 +179,13 @@ export function AddStopwatchModal({ visible, onClose, isDark }: Props) {
     if (!warned) onClose();
   }, [handleStart, onClose]);
 
-  // Confirm from warning modal: start the timer, then close the sheet.
+  // Confirm from warning modal: only close the sheet once the warning chain
+  // is fully resolved and the timer has actually started. If onConfirm
+  // returns false, a chained warning (e.g. interaction after redose) is now
+  // pending — closing the sheet here would unmount it before it's shown.
   const handleConfirm = useCallback(() => {
-    onConfirm();
-    onClose();
+    const started = onConfirm();
+    if (started) onClose();
   }, [onConfirm, onClose]);
 
   const bgColor     = isDark ? '#111' : '#fff';
@@ -167,9 +211,14 @@ export function AddStopwatchModal({ visible, onClose, isDark }: Props) {
       : []),
   ];
 
+  // Whichever row renders first is the one the "Mark a favorite" tour step
+  // spotlights — deliberately dynamic rather than a fixed id, since which
+  // type ends up first depends on existing favorites.
+  const firstItemId = sections[0]?.data[0]?.id;
+
   return (
     <Modal
-      visible={visible}
+      visible={effectiveVisible}
       transparent
       animationType="slide"
       onRequestClose={onClose}
@@ -201,6 +250,7 @@ export function AddStopwatchModal({ visible, onClose, isDark }: Props) {
               warningStatus={state.showInteractionBadges ? warningMap.get(item.id) : undefined}
               isFavorite={favIds.has(item.id)}
               onToggleFavorite={toggleFavorite}
+              tourTargetId={item.id === firstItemId ? 'live.favoriteStar' : undefined}
             />
           )}
         />
@@ -228,6 +278,34 @@ export function AddStopwatchModal({ visible, onClose, isDark }: Props) {
         onConfirm={handleConfirm}
         onCancel={onCancel}
       />
+
+      {/* Onboarding tour: "Mark a favorite" step, embedded here (rather than
+          drawn by TourOverlay) because the star it explains only exists once
+          this sheet is open. Rendered as an absoluteFill overlay inside this
+          same Modal for the same one-native-Modal-at-a-time reason as above. */}
+      {tourReady && tourStep && favoriteStarRect && (
+        <>
+          <SpotlightMask
+            rect={favoriteStarRect}
+            screenW={screenW}
+            screenH={screenH}
+            isDark={isDark}
+            blockTouches
+          />
+          <Callout
+            step={tourStep}
+            stepIndex={tour.stepIndex}
+            total={tour.steps.length}
+            rect={favoriteStarRect}
+            screenW={screenW}
+            screenH={screenH}
+            isDark={isDark}
+            onNext={tour.next}
+            onPrev={tour.prev}
+            onSkip={tour.skip}
+          />
+        </>
+      )}
     </Modal>
   );
 }

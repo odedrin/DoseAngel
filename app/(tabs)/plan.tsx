@@ -452,8 +452,11 @@ export default function PlanScreen() {
         </Text>
       </View>
 
-      {/* Plan chip selector */}
-      <View ref={chipsTourRef}>
+      {/* Plan chip selector. Explicit width on the tour-ref wrapper matters:
+          the ScrollView inside doesn't constrain its own box to the screen
+          (flexShrink: 0 lets it size to its unclipped horizontal content),
+          so without this the tour spotlight measured wider than the screen. */}
+      <View ref={chipsTourRef} style={{ width: '100%' }}>
         <PlanChipBar
           plans={state.plans}
           selectedId={selectedPlan?.id ?? ''}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Linking,
   ScrollView,
@@ -36,6 +36,18 @@ export default function SettingsScreen() {
 
   // Onboarding tour target — see store/TourContext.tsx for the step copy.
   const harmReductionTourRef = useTourTarget('settings.harmReduction');
+  const scrollRef = useRef<ScrollView>(null);
+
+  // Tab screens stay mounted, so this ScrollView can still be scrolled down
+  // from an earlier visit when the tour lands here, leaving the spotlighted
+  // card above the top of the screen. Reset to the top whenever this step
+  // becomes active so the ring is always fully visible.
+  useEffect(() => {
+    if (tour.active && tour.steps[tour.stepIndex]?.id === 'settings-harm') {
+      scrollRef.current?.scrollTo({ y: 0, animated: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tour.active, tour.stepIndex]);
 
   const bgColor   = isDark ? '#000' : '#F2F2F7';
   const cardBg    = isDark ? '#1E2022' : '#fff';
@@ -103,9 +115,13 @@ export default function SettingsScreen() {
 
   // Harm Reduction
   blocks.push(
-    <View key="harm-reduction" ref={harmReductionTourRef}>
+    <View key="harm-reduction">
       <Text style={[styles.groupLabel, { color: subColor }]}>Harm Reduction</Text>
-      <View style={[styles.card, { backgroundColor: cardBg }]}>
+      {/* Tour ref lives on the card itself, not the group wrapper above —
+          the wrapper has no width constraint of its own and stretches
+          full-bleed, which measured wider than the screen. The card has
+          the marginHorizontal that actually matches what's drawn on screen. */}
+      <View ref={harmReductionTourRef} style={[styles.card, { backgroundColor: cardBg }]}>
         <View style={[styles.row, { borderBottomColor: sepColor }]}>
           <View style={styles.rowText}>
             <Text style={[styles.rowTitle, { color: textColor }]}>Interaction Badges</Text>
@@ -294,6 +310,7 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: bgColor }]}>
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
         stickyHeaderIndices={[typesStickyIndex]}

@@ -785,7 +785,7 @@
 
       <h4>Redose warning</h4>
       <p>A separate, unrelated check: when you tap <strong>▶ Start</strong> (from the Add Stopwatch sheet or a type card) on a type that already has an active instance which hasn't reached its <strong>peak</strong> phase yet (still in onset or comeup), a blocking modal appears showing the type name and how long until that active instance peaks. Two buttons: <strong>Cancel</strong> and <strong>Redose anyway</strong>.</p>
-      <p>This is distinct from the interaction warning above: it isn't about drug-drug interactions or TripSit data, it's a timing nudge about redosing the same thing on top of itself before its first dose has fully come up. It applies to <strong>any</strong> type, not just the 18 bundled substances, since it depends only on the type's own curve shape, not the interaction database. Controlled by its own <strong>Redose Warnings</strong> toggle in Settings (on by default), independent of <strong>Warning Popups</strong>. If both an interaction warning and a redose warning would apply to the same action, the interaction warning takes priority and is shown instead.</p>
+      <p>This is distinct from the interaction warning above: it isn't about drug-drug interactions or TripSit data, it's a timing nudge about redosing the same thing on top of itself before its first dose has fully come up. It applies to <strong>any</strong> type, not just the 18 bundled substances, since it depends only on the type's own curve shape, not the interaction database. Controlled by its own <strong>Redose Warnings</strong> toggle in Settings (on by default), independent of <strong>Warning Popups</strong>. If both an interaction warning and a redose warning would apply to the same action, both are shown — the redose warning first, then the interaction warning once it's confirmed. Canceling either one aborts the action entirely; the timer only starts once every applicable warning has been confirmed.</p>
     </section>
 
     <!-- ── 4.6 Settings ── -->
@@ -811,7 +811,7 @@
       <p>Expanded sections, in order: <strong>Custom</strong> (your types, shown first), <strong>Built-in</strong> (the two presets), and <strong>Substances</strong>. The Substances section header carries its own <strong>+ Add Substance</strong> button (see §4.4) for building a new substance from scratch. Types you've hidden appear in a nested, non-sticky collapsible <strong>Hidden</strong> section at the bottom — independent of the outer sticky toggle.</p>
       <p><strong>Type cards.</strong> Each card shows the type name, a mini sparkline curve preview, total duration, a four-phase breakdown table (duration and proportion per phase), and a segmented proportion bar. Action buttons:</p>
       <ul>
-        <li><strong>▶ Start</strong> — starts an instance directly from here. Triggers a haptic tap on confirmation. If the type is a substance and interaction warnings are enabled, an interaction check runs first; if redose warnings are enabled, a redose check runs too (see §4.5).</li>
+        <li><strong>▶ Start</strong> — starts an instance directly from here. Triggers a haptic tap on confirmation. If redose warnings are enabled and this type has an active instance short of peak, the redose check fires first; if the type is also a substance with interaction warnings enabled, the interaction check follows once the redose warning is confirmed. Both can appear in sequence for the same action (see §4.5).</li>
         <li><strong>Customize / Edit</strong> — opens the full type editor (<code>TypeEditorModal</code>). For a built-in, this duplicates it into a new, independent, fully-editable custom type ("Customize"). For anything not built-in — a custom type, or a substance created via + Add Substance — this edits it in place, including its name ("Edit Type").</li>
         <li><strong>✎</strong> — (bundled substances only, i.e. <code>isSubstance &amp;&amp; isBuiltIn</code>) opens the restricted duration-only editor (<code>SubstanceDurationEditorModal</code>) — wheel/drum pickers for onset, comeup, peak, and offset, with a tap-to-type keyboard override for exact values. Name, color, and curve shapes stay locked. Edits are applied in place and persisted as a <code>durationOverride</code> (see §7 State model), not a copy. A "Reset to default timing" link appears once a substance has been customized this way.</li>
         <li><strong>Hide</strong> — moves the type card to the collapsible Hidden section. The type still works normally; it just de-clutters the main list.</li>
@@ -837,14 +837,20 @@
       </ul>
 
       <h4>Disclosure screen</h4>
-      <p>A full-screen page sheet summarising DoseAngel's privacy stance and harm reduction context. It contains three cards:</p>
+      <p>A full-screen page sheet summarising DoseAngel's privacy stance and harm reduction context. It contains four cards:</p>
       <ul>
         <li><strong>100% offline · no data leaves your device</strong> — confirms that everything is stored locally and nothing is transmitted externally.</li>
         <li><strong>For harm reduction reference only</strong> — explains that PK data are population midpoints, individual responses vary significantly, and the app is not medical advice.</li>
         <li><strong>Interaction warnings</strong> — explains the TripSit-sourced interaction data and notes that the absence of a warning does not imply safety.</li>
+        <li><strong>Know the risks</strong> — notes that many covered substances are illegal in many countries and carry addiction risk, and that use is at the person's own risk.</li>
       </ul>
       <p><strong>First launch:</strong> the Disclosure screen appears automatically on the first time the app is opened. A <strong>Don't show again</strong> checkbox (checked by default) is shown above the <strong>Continue</strong> button. If left checked, a flag is written to AsyncStorage and the screen will not appear automatically on subsequent launches. Unchecking it and tapping Continue dismisses the screen without writing the flag, so it will appear again next launch.</p>
       <p>The screen can always be reopened via <strong>Settings → Privacy &amp; disclosure → View ↗</strong>. In this context the checkbox is absent; a small <strong>Show on next launch</strong> link at the bottom clears the suppression flag so the screen will reappear automatically on the next cold start.</p>
+
+      <h4>Consent gate</h4>
+      <p>A mandatory, blocking full-screen agreement shown immediately after the Disclosure screen is dismissed on first launch. It states that the person understands drug use carries risk that harm reduction measures cannot eliminate, that they are responsible for their own choices and consequences, and that DoseAngel does not give medical advice and cannot guarantee its data is fully accurate.</p>
+      <p>Unlike the Disclosure screen, it cannot be swiped away, backgrounded past, or skipped. A checkbox labeled <strong>I understand and agree</strong> must be ticked before the <strong>Continue</strong> button becomes active. The only other option is <strong>Quit app</strong>: on Android this exits the app directly; on iOS, apps cannot force-quit themselves, so it prompts the person to close DoseAngel manually.</p>
+      <p>This is a one-time, permanent agreement, separate from the Disclosure screen's "don't show again" preference. Once agreed, a flag is written to AsyncStorage (<code>consent:agreed</code>) and the gate never appears again, including for people who dismissed the Disclosure screen on an earlier app version before this gate existed — it will show once on their next launch regardless of their disclosure preference.</p>
 
       <h4>Disclaimer</h4>
       <p>A reminder that DoseAngel provides pharmacokinetic reference data for harm reduction purposes only — duration estimates are population midpoints, individual responses vary, and a medical professional should be consulted if in doubt.</p>

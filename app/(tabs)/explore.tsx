@@ -25,6 +25,8 @@ import { EditStopwatchStartModal } from '@/components/EditStopwatchStartModal';
 import { AddStopwatchModal } from '@/components/AddStopwatchModal';
 import type { GraphEntry, GraphRef, PlanCurve, PlanMarker } from '@/components/Graph';
 import { useTourTarget } from '@/store/tourTargets';
+import { useTour } from '@/store/TourContext';
+import type { ActiveStopwatch, Plan } from '@/types/models';
 
 if (
   Platform.OS === 'android' &&
@@ -34,6 +36,14 @@ if (
 }
 
 const TICK_MS = 1000;
+
+// Onboarding tour: synthetic ids for illustrative demo data. Several tour
+// steps explain UI (the legend, the plan overlay chips) that has nothing to
+// point at on a fresh install — no active doses, no plans yet. Rather than
+// touching real persisted state, the relevant steps render one fake entry
+// that only exists for the duration of that step, never written to storage.
+const TOUR_DEMO_STOPWATCH_ID = '__tour_demo_stopwatch__';
+const TOUR_DEMO_PLAN_ID = '__tour_demo_plan__';
 
 export default function LiveGraphScreen() {
   const colorScheme = useColorScheme() ?? 'light';
@@ -50,6 +60,9 @@ export default function LiveGraphScreen() {
   const graphTourRef = useTourTarget('live.graph');
   const fabTourRef = useTourTarget('live.fab');
   const legendTourRef = useTourTarget('live.legend');
+  const planTourRef = useTourTarget('live.planToggle');
+  const tour = useTour();
+  const tourStepId = tour.active ? tour.steps[tour.stepIndex]?.id : undefined;
 
   // Multi-select state
   const [isSelectMode, setIsSelectMode] = useState(false);
@@ -89,19 +102,49 @@ export default function LiveGraphScreen() {
     }
   }, [state.activeStopwatches.length]);
 
+  // Onboarding tour demo data — "the graph", "everything you're tracking",
+  // and "show or hide a dose" all explain the legend/graph, which are empty
+  // on a fresh install. While any of these steps is active and nothing real
+  // is running, show one illustrative dose instead (frozen ~35% through its
+  // curve, a good spot to see onset/comeup/peak all at once).
+  const showTrackingDemo = (tourStepId === 'live-graph' || tourStepId === 'live-legend' || tourStepId === 'live-visibility')
+    && state.activeStopwatches.length === 0;
+  const demoType = useMemo(
+    () => state.types.find(t => t.isBuiltIn && t.isSubstance) ?? state.types[0],
+    [state.types],
+  );
+  const demoStartTime = demoType ? now - Math.round(totalDuration(demoType) * 0.35) : now;
+  const demoStopwatch: ActiveStopwatch | null = (showTrackingDemo && demoType) ? {
+    id: TOUR_DEMO_STOPWATCH_ID,
+    typeId: demoType.id,
+    startTime: demoStartTime,
+  } : null;
+  const displayStopwatches: ActiveStopwatch[] = demoStopwatch ? [demoStopwatch] : state.activeStopwatches;
+
+  // "Preview it on Live" explains the plan overlay chips, which don't render
+  // at all until at least one plan exists. Show one fake chip while that
+  // step is active and the user has no real plans yet.
+  const showPlanDemo = tourStepId === 'live-plan-preview' && state.plans.length === 0;
+  const displayPlans: Plan[] = showPlanDemo
+    ? [{ id: TOUR_DEMO_PLAN_ID, name: 'Example Plan', entries: [] }]
+    : state.plans;
+
   // Entries actually fed to the graph — active stopwatches minus any the
   // user has hidden via a legend row tap. Always passed explicitly (rather
   // than leaving Graph to default to all active stopwatches) so hiding stays
   // in sync with the off-screen indicators below.
-  const graphEntries: GraphEntry[] = useMemo(() => (
-    state.activeStopwatches
+  const graphEntries: GraphEntry[] = useMemo(() => {
+    if (showTrackingDemo && demoType) {
+      return [{ type: demoType, startTime: demoStartTime }];
+    }
+    return state.activeStopwatches
       .filter(sw => !hiddenGraphIds.has(sw.id))
       .flatMap(sw => {
         const tp = state.types.find(t => t.id === sw.typeId);
         if (!tp) return [];
         return [{ type: tp, startTime: now - effectiveElapsed(sw, now) }];
-      })
-  ), [state.activeStopwatches, state.types, hiddenGraphIds, now]);
+      });
+  }, [state.activeStopwatches, state.types, hiddenGraphIds, now, showTrackingDemo, demoType, demoStartTime]);
 
   const toggleGraphVisibility = useCallback((id: string) => {
     setHiddenGraphIds(prev => {
@@ -118,8 +161,8 @@ export default function LiveGraphScreen() {
     );
   }, [state.activeStopwatches]);
 
-  const earliestStart = state.activeStopwatches.length > 0
-    ? Math.min(...state.activeStopwatches.map(sw => sw.startTime))
+  const earliestStart = displayStopwatches.length > 0
+    ? Math.min(...displayStopwatches.map(sw => sw.startTime))
     : null;
   const elapsedSinceFirst = earliestStart !== null ? now - earliestStart : null;
 
@@ -230,16 +273,17 @@ export default function LiveGraphScreen() {
         </View>
 
         {/* ── Container: Overlay plans (moved to top, only when plans exist) ── */}
-        {state.plans.length > 0 && (
-          <View style={[styles.overlayCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
+        {(displayPlans.length > 0) && (
+          <View ref={planTourRef} style={[styles.overlayCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
             <Text style={[styles.overlayLabel, { color: subColor }]}>Overlay plans</Text>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.overlayChips}
             >
-              {state.plans.map(plan => {
+              {displayPlans.map(plan => {
                 const isVisible = visiblePlanIds.has(plan.id);
+                const isDemo = plan.id === TOUR_DEMO_PLAN_ID;
                 return (
                   <TouchableOpacity
                     key={plan.id}
@@ -250,7 +294,7 @@ export default function LiveGraphScreen() {
                         borderColor: isVisible ? accent : cardBorder,
                       },
                     ]}
-                    onPress={() => togglePlan(plan.id)}
+                    onPress={isDemo ? undefined : () => togglePlan(plan.id)}
                   >
                     <Text style={[styles.planChipText, { color: isVisible ? '#fff' : subColor }]}>
                       {isVisible ? '☑' : '☐'} {plan.name}
@@ -345,7 +389,7 @@ export default function LiveGraphScreen() {
               <Text style={[styles.legendTitle, { color: subColor }]}>
                 {isSelectMode
                   ? `${selectedIds.size} selected`
-                  : `Running now${state.activeStopwatches.length > 0 ? ` · ${state.activeStopwatches.length}` : ''}`}
+                  : `Running now${displayStopwatches.length > 0 ? ` · ${displayStopwatches.length}` : ''}`}
               </Text>
             </View>
             <View style={styles.legendHeaderActions}>
@@ -378,16 +422,17 @@ export default function LiveGraphScreen() {
               naturally and the outer page ScrollView handles overflow. */}
           {!legendCollapsed && (
           <View style={styles.legendList}>
-          {state.activeStopwatches.length === 0 ? (
+          {displayStopwatches.length === 0 ? (
             <View style={styles.emptyState}>
               <Text style={[styles.emptyText, { color: subColor }]}>
                 Tap + to start tracking your first dose.
               </Text>
             </View>
           ) : (
-            state.activeStopwatches.map(sw => {
+            displayStopwatches.map(sw => {
               const type = state.types.find(t => t.id === sw.typeId);
               if (!type) return null;
+              const isDemo = sw.id === TOUR_DEMO_STOPWATCH_ID;
               const elapsed   = effectiveElapsed(sw, now);
               const total     = totalDuration(type);
               const phase     = currentPhase(type, elapsed);
@@ -408,8 +453,8 @@ export default function LiveGraphScreen() {
                     isSelected && { backgroundColor: isDark ? '#1C2B2B' : '#E8F8F7' },
                     !isSelectMode && isHiddenFromGraph && styles.legendRowHidden,
                   ]}
-                  onPress={isSelectMode ? () => handleRowPress(sw.id) : () => toggleGraphVisibility(sw.id)}
-                  onLongPress={() => handleLongPress(sw.id)}
+                  onPress={isDemo ? undefined : (isSelectMode ? () => handleRowPress(sw.id) : () => toggleGraphVisibility(sw.id))}
+                  onLongPress={isDemo ? undefined : () => handleLongPress(sw.id)}
                   activeOpacity={0.6}
                 >
                   {/* Color stripe — greyed out when excluded from the graph */}
@@ -456,14 +501,14 @@ export default function LiveGraphScreen() {
                     <View style={styles.rowActions}>
                       <TouchableOpacity
                         style={[styles.actionBtn, { borderColor: cardBorder }]}
-                        onPress={() => setEditingId(sw.id)}
+                        onPress={isDemo ? undefined : () => setEditingId(sw.id)}
                         hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
                       >
                         <Text style={[styles.actionBtnText, { color: subColor }]}>✎</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={[styles.actionBtn, { borderColor: cardBorder }]}
-                        onPress={() => handleStop(sw.id)}
+                        onPress={isDemo ? undefined : () => handleStop(sw.id)}
                         hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
                       >
                         <Text style={[styles.actionBtnText, { color: '#FF6B6B' }]}>✕</Text>

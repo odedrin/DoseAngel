@@ -11,6 +11,7 @@
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter } from 'expo-router';
 import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
 
 export type TourTab = 'explore' | 'plan' | 'interactions' | 'settings';
@@ -21,6 +22,14 @@ export type TourStep = {
   targetId: string;
   title: string;
   body: string;
+  /**
+   * When true, this step's spotlight lives inside another screen's own
+   * component (e.g. a modal that must be opened first) rather than being
+   * drawn by TourOverlay's own Modal. TourOverlay renders nothing for these
+   * steps; the owning component reads TourContext itself and draws its own
+   * spotlight using the same SpotlightMask/Callout building blocks.
+   */
+  embeddedTarget?: boolean;
 };
 
 export const TOUR_STEPS: TourStep[] = [
@@ -34,9 +43,10 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: 'live-favorite',
     tab: 'explore',
-    targetId: 'live.fab',
+    targetId: 'live.favoriteStar',
+    embeddedTarget: true,
     title: 'Mark a favorite',
-    body: 'From that same + sheet, tap the star next to any substance to favorite it. Favorites float to the top of the list, so the ones you use most are always one tap away.',
+    body: 'Tap the star next to any substance to favorite it. Favorites float to the top of this list, so the ones you use most are always one tap away.',
   },
   {
     id: 'live-graph',
@@ -46,13 +56,6 @@ export const TOUR_STEPS: TourStep[] = [
     body: "Every dose you're tracking shows up here, layered together in real time. You can see what phase each one is in and how it's expected to progress.",
   },
   {
-    id: 'live-visibility',
-    tab: 'explore',
-    targetId: 'live.legend',
-    title: 'Show or hide a dose',
-    body: "Tap any dose in this list to drop its curve off the graph above, or tap it again to bring it back. Useful when you're tracking several things and only want to focus on one or two. Hide All / Show All does it for everything at once.",
-  },
-  {
     id: 'live-legend',
     tab: 'explore',
     targetId: 'live.legend',
@@ -60,25 +63,39 @@ export const TOUR_STEPS: TourStep[] = [
     body: 'Active doses are listed here. Tap ✎ to correct a start time, or ✕ to remove one.',
   },
   {
+    id: 'live-visibility',
+    tab: 'explore',
+    targetId: 'live.legend',
+    title: 'Show or hide a dose',
+    body: "Tap any dose in this list to drop its curve off the graph above, or tap it again to bring it back. Useful when you're tracking several things and only want to focus on one or two. Hide All / Show All does it for everything at once.",
+  },
+  {
     id: 'plan-chips',
     tab: 'plan',
     targetId: 'plan.chips',
     title: 'Plan ahead',
-    body: "Reduce uncertainty by planning ahead: create a plan, avoid dangerous combinations, and time your doses correctly. Once it's built, flip back to Live and toggle it on to see it overlaid on top of what's actually happening.",
+    body: "Reduce uncertainty by planning ahead: build a plan, and DoseAngel will help you avoid dangerous combinations and time your doses correctly.",
+  },
+  {
+    id: 'live-plan-preview',
+    tab: 'explore',
+    targetId: 'live.planToggle',
+    title: 'Preview it on Live',
+    body: "Once a plan exists, tap it here to preview it on this graph, showing exactly when you plan to take each dose. Want the full predicted curve instead of just the start time? Switch to Full curve under Settings, Plan overlay.",
   },
   {
     id: 'combos-intro',
     tab: 'interactions',
-    targetId: 'combos.headline',
+    targetId: 'combos.example',
     title: 'Check a combo',
-    body: 'Tap two substances here anytime to see documented interaction risk between them, sourced from TripSit.',
+    body: "Tap two substances here anytime to see documented interaction risk between them, sourced from TripSit. This example shows ketamine and alcohol, a combination with documented risk.",
   },
   {
     id: 'settings-harm',
     tab: 'settings',
     targetId: 'settings.harmReduction',
-    title: 'Make it yours',
-    body: "Settings holds toggles for interaction warnings, graph overlays, and appearance. Explore them anytime.",
+    title: 'Settings',
+    body: "Toggles live here for interaction warnings, redose alerts, your substance library, graph overlays, and appearance. You can also replay this tour anytime from the About section.",
   },
 ];
 
@@ -97,13 +114,18 @@ type TourContextValue = {
 const TourContext = createContext<TourContextValue | null>(null);
 
 export function TourProvider({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
   const [active, setActive] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
 
+  // Whether the tour is completed or skipped, it always finishes on the
+  // Settings tab (the last step) — send the person back to the Live screen
+  // rather than leaving them wherever the tour happened to end.
   const finish = useCallback(() => {
     setActive(false);
     AsyncStorage.setItem(TOUR_KEY, 'true');
-  }, []);
+    router.navigate('/explore');
+  }, [router]);
 
   const start = useCallback(() => {
     setStepIndex(0);

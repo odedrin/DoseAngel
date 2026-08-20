@@ -35,6 +35,12 @@ import {
 } from '@/constants/interactions';
 import type { StopwatchType } from '@/types/models';
 import { useTourTarget } from '@/store/tourTargets';
+import { useTour } from '@/store/TourContext';
+
+// Onboarding tour: the "Check a combo" step shows a real worked example
+// rather than an empty grid, since a documented risky combination is more
+// convincing than an abstract description.
+const TOUR_DEMO_SELECTION = ['substance-ketamine', 'substance-alcohol'];
 
 function severityLabel(status: InteractionStatus): string {
   switch (status) {
@@ -65,6 +71,8 @@ export default function CheckComboScreen() {
   const colorScheme = useColorScheme() ?? 'light';
   const isDark = colorScheme === 'dark';
   const { state } = useStopwatch();
+  const tour = useTour();
+  const isComboTourStep = tour.active && tour.steps[tour.stepIndex]?.id === 'combos-intro';
 
   // Nicotine is excluded from this screen entirely: DoseAngel's two data
   // sources (TripSit, PsychonautWiki) don't publish any combination data
@@ -74,6 +82,15 @@ export default function CheckComboScreen() {
     () => state.types.filter(t => t.isSubstance && t.id !== 'substance-nicotine'),
     [state.types],
   );
+
+  // While the "Check a combo" tour step is active, the ketamine/alcohol
+  // demo pair (set below) can land anywhere in this ~18-item grid, far from
+  // the result card the step spotlights — no single scroll position could
+  // show both together. Show only the two demo chips instead, so the whole
+  // example (chips + result) is short enough to fit on screen at once.
+  const displaySubstances = isComboTourStep
+    ? substances.filter(s => TOUR_DEMO_SELECTION.includes(s.id))
+    : substances;
 
   const activeSubstanceIds = useMemo(() => [
     ...new Set(
@@ -91,7 +108,28 @@ export default function CheckComboScreen() {
   );
 
   // Onboarding tour target — see store/TourContext.tsx for the step copy.
-  const headlineTourRef = useTourTarget('combos.headline');
+  // Deliberately the result card, not the headline: the headline sits at
+  // the very top, which forces the callout to render directly below it
+  // (there's nowhere else with more room), covering the grid and result
+  // right underneath. Targeting the result card near the bottom instead
+  // means the callout renders above it, leaving the worked example clear.
+  const exampleCardTourRef = useTourTarget('combos.example');
+
+  // While the "Check a combo" tour step is active, show the worked example
+  // (ketamine + alcohol) regardless of whatever the user had selected
+  // before — then restore it once the step ends, so the tour never leaves
+  // a stray selection behind for real use.
+  const preTourSelectionRef = useRef<string[] | null>(null);
+  useEffect(() => {
+    if (isComboTourStep) {
+      preTourSelectionRef.current = selected;
+      setSelected(TOUR_DEMO_SELECTION);
+    } else if (preTourSelectionRef.current !== null) {
+      setSelected(preTourSelectionRef.current);
+      preTourSelectionRef.current = null;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isComboTourStep]);
 
   // The result card lives in the same scroll flow as the grid (see
   // components note above) so it can never cover an unscrolled chip, but
@@ -145,7 +183,7 @@ export default function CheckComboScreen() {
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: bgColor }]}>
       {/* ── Screen headline (matches Live / Plan) ── */}
-      <View ref={headlineTourRef} style={styles.headline}>
+      <View style={styles.headline}>
         <Text style={[styles.headlineTitle, { color: textColor }]}>Check a Combo</Text>
         <Text style={[styles.headlineSubtitle, { color: subColor }]}>
           Select two substances to see how they interact
@@ -161,7 +199,11 @@ export default function CheckComboScreen() {
         onContentSizeChange={() => {
           if (pendingScrollRef.current) {
             pendingScrollRef.current = false;
-            scrollRef.current?.scrollToEnd({ animated: true });
+            // Instant (not animated) during the tour: the spotlight starts
+            // measuring the result card as soon as it exists, and an
+            // in-progress scroll animation would leave it targeting a
+            // stale, pre-scroll position.
+            scrollRef.current?.scrollToEnd({ animated: !isComboTourStep });
           }
         }}
         style={styles.gridScroll}
@@ -171,7 +213,7 @@ export default function CheckComboScreen() {
         {hint && <Text style={[styles.hint, { color: subColor }]}>{hint}</Text>}
 
         <View style={styles.grid}>
-          {substances.map(s => {
+          {displaySubstances.map(s => {
             const isSelected = selected.includes(s.id);
             const isLocked = selected.length === 2 && !isSelected;
             const badgeStatus = badgeMap.get(s.id);
@@ -218,10 +260,13 @@ export default function CheckComboScreen() {
              pinned outside it) so it can never sit on top of an unscrolled
              chip and block deselecting it. Only shown once 2 are picked. ── */}
         {pairInteraction !== undefined && (
-          <View style={[
-            styles.explainCard,
-            { backgroundColor: cardBg, borderLeftColor: INTERACTION_COLOR[pairInteraction.status] },
-          ]}>
+          <View
+            ref={exampleCardTourRef}
+            style={[
+              styles.explainCard,
+              { backgroundColor: cardBg, borderLeftColor: INTERACTION_COLOR[pairInteraction.status] },
+            ]}
+          >
             <Text style={[
               styles.explainBadge,
               { color: INTERACTION_COLOR[pairInteraction.status], backgroundColor: INTERACTION_COLOR[pairInteraction.status] + '20' },
