@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
+  Alert,
   Linking,
   ScrollView,
   StyleSheet,
@@ -296,6 +297,44 @@ export default function SettingsScreen() {
       </View>
     </View>,
   );
+
+  // Developer-only: reset all local data. __DEV__ is false in any release
+  // build (TestFlight/App Store/Play Store), so this never ships - it only
+  // exists to re-test the Disclosure -> ConsentGate -> Tour first-launch
+  // flow repeatedly without deleting and reinstalling the app.
+  if (__DEV__) {
+    blocks.push(
+      <View key="dev-tools">
+        <Text style={[styles.groupLabel, { color: subColor }]}>Developer</Text>
+        <View style={[styles.card, { backgroundColor: cardBg }]}>
+          <TouchableOpacity
+            style={styles.infoRow}
+            onPress={() => {
+              Alert.alert(
+                'Reset all local data?',
+                'Clears everything stored on-device: tracked doses, custom types, plans, and the disclosure/consent/tour first-launch flags. Close and reopen the app afterward to see the fresh-install flow.',
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  {
+                    text: 'Reset',
+                    style: 'destructive',
+                    onPress: async () => {
+                      await AsyncStorage.clear();
+                      Alert.alert('Done', 'Now close and reopen the app (reloading alone may not re-run first-launch checks).');
+                    },
+                  },
+                ],
+              );
+            }}
+            activeOpacity={0.6}
+          >
+            <Text style={[styles.infoLabel, { color: '#FF3B30' }]}>Reset all local data</Text>
+            <Text style={[styles.infoValue, { color: subColor }]}>Dev only</Text>
+          </TouchableOpacity>
+        </View>
+      </View>,
+    );
+  }
 
   // Disclaimer
   blocks.push(
