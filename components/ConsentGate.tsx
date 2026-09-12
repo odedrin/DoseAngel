@@ -72,32 +72,40 @@ export function ConsentGate({ visible, onAgree }: Props) {
     >
       <View style={[styles.root, { backgroundColor: bgColor }]}>
 
-        {/* Left-aligned title running straight into the two statements, no
-            boxed "card" around them — this is a short, plain-text agreement,
-            not a dashboard widget, so it reads as text rather than UI chrome.
-            The whole block centers vertically via scrollContent's flexGrow +
-            justifyContent, and falls back to normal top-anchored scrolling
-            if the content ever grows taller than the screen (larger
-            accessibility text sizes, for example). */}
+        {/* No boxed "card" here — a short accent rule and a numeral next to
+            each statement carry the structure instead, so it reads as a
+            deliberately set page rather than either a generic bordered
+            widget or plain unstyled text. The whole block centers
+            vertically via scrollContent's flexGrow + justifyContent, and
+            falls back to normal top-anchored scrolling if the content ever
+            grows taller than the screen (larger accessibility text sizes,
+            for example). */}
         <ScrollView
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
+          <View style={[styles.rule, { backgroundColor: accentColor }]} />
           <Text style={[styles.title, { color: textColor }]}>Before you continue</Text>
 
-          <Text style={[styles.paragraph, { color: textColor }]}>
-            I understand that drug use carries risk that harm reduction measures cannot
-            eliminate. I am responsible for my own choices and their consequences, and
-            DoseAngel is not responsible for any choice I make or its outcome.
-          </Text>
+          <View style={styles.statements}>
+            <View style={styles.statementRow}>
+              <Text style={[styles.numeral, { color: accentColor }]}>01</Text>
+              <Text style={[styles.paragraph, { color: textColor }]}>
+                I understand that drug use carries risk that harm reduction measures cannot
+                eliminate. I am responsible for my own choices and their consequences, and
+                DoseAngel is not responsible for any choice I make or its outcome.
+              </Text>
+            </View>
 
-          <View style={[styles.divider, { backgroundColor: borderColor }]} />
-
-          <Text style={[styles.paragraph, { color: textColor }]}>
-            I understand that DoseAngel does not give medical advice, and that the data in
-            the app may contain errors or be incomplete.
-          </Text>
+            <View style={styles.statementRow}>
+              <Text style={[styles.numeral, { color: accentColor }]}>02</Text>
+              <Text style={[styles.paragraph, { color: textColor }]}>
+                I understand that DoseAngel does not give medical advice, and that the data in
+                the app may contain errors or be incomplete.
+              </Text>
+            </View>
+          </View>
         </ScrollView>
 
         {/* Footer */}
@@ -144,11 +152,16 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
   },
+  rule: {
+    width: 40,
+    height: 3,
+    marginBottom: 18,
+  },
   title: {
-    fontSize: 24,
-    fontWeight: '700',
+    fontSize: 26,
+    fontWeight: '800',
     letterSpacing: -0.3,
-    marginBottom: 22,
+    marginBottom: 30,
   },
   scroll: {
     flex: 1,
@@ -156,17 +169,28 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
-    paddingTop: 32,
-    paddingHorizontal: 24,
-    paddingBottom: 24,
+    paddingHorizontal: 28,
+    paddingVertical: 24,
+  },
+  statements: {
+    gap: 28,
+  },
+  statementRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 16,
+  },
+  numeral: {
+    width: 40,
+    flexShrink: 0,
+    fontSize: 30,
+    fontWeight: '800',
+    lineHeight: 32,
   },
   paragraph: {
+    flex: 1,
     fontSize: 16,
     lineHeight: 24,
-  },
-  divider: {
-    height: StyleSheet.hairlineWidth,
-    marginVertical: 20,
   },
   footer: {
     padding: 20,
