@@ -36,11 +36,13 @@ export function ConsentGate({ visible, onAgree }: Props) {
   const [agreed, setAgreed] = useState(false);
 
   const bgColor     = isDark ? '#0d0d0f' : '#F2F2F7';
-  const cardBg      = isDark ? '#1E2022' : '#fff';
   const textColor   = isDark ? '#ECEDEE' : '#11181C';
   const subColor    = isDark ? '#9BA1A6' : '#687076';
   const borderColor = isDark ? '#2A2D2F' : '#E5E5EA';
-  const accentColor = '#4ECDC4';
+  // Matches the light/dark split used for this same teal elsewhere (plan.tsx,
+  // explore.tsx) rather than the flat #4ECDC4 this screen used to hardcode —
+  // that value is tuned for dark backgrounds and runs pale on light ones.
+  const accentColor = isDark ? '#4ECDC4' : '#2BBDB4';
 
   function handleQuit() {
     if (Platform.OS === 'android') {
@@ -70,34 +72,32 @@ export function ConsentGate({ visible, onAgree }: Props) {
     >
       <View style={[styles.root, { backgroundColor: bgColor }]}>
 
-        {/* Header + card both live inside the ScrollView now, centered as
-            one block via scrollContent's flexGrow+justifyContent, rather
-            than the header being pinned to the top with a fixed paddingTop.
-            Falls back to normal top-anchored scrolling if the content ever
-            grows taller than the screen (e.g. larger accessibility text
-            sizes) - flexGrow: 1 only centers when there's spare room. */}
+        {/* Left-aligned title running straight into the two statements, no
+            boxed "card" around them — this is a short, plain-text agreement,
+            not a dashboard widget, so it reads as text rather than UI chrome.
+            The whole block centers vertically via scrollContent's flexGrow +
+            justifyContent, and falls back to normal top-anchored scrolling
+            if the content ever grows taller than the screen (larger
+            accessibility text sizes, for example). */}
         <ScrollView
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.header}>
-            <Text style={[styles.title, { color: textColor }]}>Your agreement</Text>
-            <Text style={[styles.subtitle, { color: subColor }]}>
-              Please read and confirm before continuing
-            </Text>
-          </View>
+          <Text style={[styles.title, { color: textColor }]}>Before you continue</Text>
 
-          <View style={[styles.card, { backgroundColor: cardBg, borderColor }]}>
-            <Text style={[styles.cardBody, { color: textColor }]}>
-              I understand that drug use carries risk that harm reduction measures cannot
-              eliminate. I am responsible for my own choices and their consequences, and
-              DoseAngel is not responsible for any choice I make or its outcome.
-              {'\n\n'}
-              I understand that DoseAngel does not give medical advice, and that the data in
-              the app may contain errors or be incomplete.
-            </Text>
-          </View>
+          <Text style={[styles.paragraph, { color: textColor }]}>
+            I understand that drug use carries risk that harm reduction measures cannot
+            eliminate. I am responsible for my own choices and their consequences, and
+            DoseAngel is not responsible for any choice I make or its outcome.
+          </Text>
+
+          <View style={[styles.divider, { backgroundColor: borderColor }]} />
+
+          <Text style={[styles.paragraph, { color: textColor }]}>
+            I understand that DoseAngel does not give medical advice, and that the data in
+            the app may contain errors or be incomplete.
+          </Text>
         </ScrollView>
 
         {/* Footer */}
@@ -144,22 +144,11 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
   },
-  header: {
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    gap: 8,
-    marginBottom: 8,
-  },
   title: {
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: '700',
-    letterSpacing: -0.5,
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 15,
-    textAlign: 'center',
-    lineHeight: 21,
+    letterSpacing: -0.3,
+    marginBottom: 22,
   },
   scroll: {
     flex: 1,
@@ -168,18 +157,16 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'center',
     paddingTop: 32,
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
     paddingBottom: 24,
-    gap: 12,
   },
-  card: {
-    borderRadius: 14,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: 18,
+  paragraph: {
+    fontSize: 16,
+    lineHeight: 24,
   },
-  cardBody: {
-    fontSize: 15,
-    lineHeight: 22,
+  divider: {
+    height: StyleSheet.hairlineWidth,
+    marginVertical: 20,
   },
   footer: {
     padding: 20,
