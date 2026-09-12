@@ -8,7 +8,11 @@ import { useColorSchemePreference } from '@/store/ColorSchemeContext';
  */
 export function useColorScheme(): 'light' | 'dark' {
   const { colorSchemePreference } = useColorSchemePreference();
-  const systemScheme = useNativeColorScheme() ?? 'light';
+  // RN's ColorSchemeName can also be 'unspecified' (e.g. some Android
+  // versions/devices with no OS-level preference set) as of RN 0.83 (SDK
+  // 55); treat that the same as no preference, same as null/undefined.
+  const rawSystemScheme = useNativeColorScheme();
+  const systemScheme: 'light' | 'dark' = rawSystemScheme === 'dark' ? 'dark' : 'light';
 
   if (colorSchemePreference === 'system') return systemScheme;
   return colorSchemePreference;
