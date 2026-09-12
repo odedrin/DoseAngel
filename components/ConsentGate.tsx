@@ -55,10 +55,17 @@ export function ConsentGate({ visible, onAgree }: Props) {
   }
 
   return (
+    // transparent + our own opaque full-bleed View, not presentationStyle
+    // (iOS-only; Android ignores it). Matches every other Modal in this app
+    // (InteractionWarningModal, RedoseWarningModal, AddStopwatchModal, ...) —
+    // this was previously the only non-transparent Modal in the codebase,
+    // and a likely contributor to an Android hang/blank-page bug that
+    // showed up specifically on the Disclosure -> Consent -> Tour chain of
+    // sequential native Modals. Re-test on Android before trusting this.
     <Modal
       visible={visible}
+      transparent
       animationType="fade"
-      presentationStyle="fullScreen"
       onRequestClose={handleQuit}
     >
       <View style={[styles.root, { backgroundColor: bgColor }]}>

@@ -1,4 +1,4 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router/react-navigation';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -21,10 +21,16 @@ const CONSENT_KEY = 'consent:agreed';
 // opens before the first has finished closing, rather than just glitching.
 const MODAL_TRANSITION_DELAY_MS = 400;
 
-// TEMPORARY debugging flag — set back to true once the Android hang/blank-page
-// bug is isolated. With this false, ConsentGate never shows, so we can confirm
-// whether the rest of the app (Disclosure → Tour) loads fine without it.
-const CONSENT_GATE_ENABLED = false;
+// Re-enabled after aligning ConsentGate's Modal with the rest of the app's
+// proven-working pattern (transparent + own backdrop, instead of the
+// iOS-only presentationStyle it used before) and adding an explicit
+// MODAL_TRANSITION_DELAY_MS gap before Tour opens (see agreeToConsent
+// below), mirroring the delay already used for Disclosure -> Consent.
+// Re-test the full Disclosure -> Consent -> Tour chain on a real Android
+// device/emulator before shipping — this was disabled for an Android
+// hang/blank-page bug that was never conclusively root-caused, only
+// narrowed down by process of elimination.
+const CONSENT_GATE_ENABLED = true;
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -90,7 +96,12 @@ function RootLayoutInner() {
   function agreeToConsent() {
     setConsentVisible(false);
     AsyncStorage.setItem(CONSENT_KEY, 'true');
-    startTourIfNeeded();
+    // Explicit gap before Tour's Modal opens, mirroring the delay used
+    // between Disclosure closing and ConsentGate opening above — don't
+    // rely solely on startTourIfNeeded's own setTimeout, which exists for
+    // a different reason (letting the tab layout settle) and could change
+    // independently of this modal-safety requirement.
+    setTimeout(startTourIfNeeded, MODAL_TRANSITION_DELAY_MS);
   }
 
   return (

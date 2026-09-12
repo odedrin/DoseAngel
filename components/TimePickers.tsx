@@ -397,7 +397,7 @@ export const ClockPicker = forwardRef<ClockPickerHandle, ClockPickerProps>(funct
           {/* HHMM keyboard overlay — absolutely fills the HH:MM block */}
           {hhmmEditing && (
             <View
-              style={[StyleSheet.absoluteFillObject, { alignItems: 'center', justifyContent: 'center' }]}
+              style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]}
             >
               {/* Center-row highlight (mirrors the WheelPicker selBox) */}
               <View
@@ -561,7 +561,7 @@ export const DurationPicker = forwardRef<DurationPickerHandle, DurationPickerPro
         </View>
 
         {editing && (
-          <View style={[StyleSheet.absoluteFillObject, { alignItems: 'center', justifyContent: 'center' }]}>
+          <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]}>
             <View
               pointerEvents="none"
               style={{

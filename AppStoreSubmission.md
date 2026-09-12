@@ -59,6 +59,19 @@ Rejected under Guideline 1.4.1: the submitted description had no medical disclai
 First release of DoseAngel: live superposition tracking, Plan mode for previewing timing before you commit, a combination-interaction reference, and a fully offline, on-device design.
 ```
 
+## What's New (v1.0.1)
+```
+This update focuses on smarter warnings and more control over your substance library.
+
+Redose check: get warned before starting a new timer for something that's already active and hasn't reached its peak yet, a separate check from the interaction warning so it's never silently skipped.
+
+Editable timing: adjust onset, comeup, peak, and offset for any bundled substance to match your own experience, with a one-tap reset back to the default.
+
+Revised interaction data: interaction ratings and explanations have been re-checked and refined for accuracy, with a couple of new substances added to the database.
+
+Plus smaller timing corrections, a smoother onboarding walkthrough, and general bug fixes.
+```
+
 ## Category
 Primary: **Health & Fitness** (Medical is the other option, but Medical apps face additional Apple review requirements around clinical accuracy claims; Health & Fitness better matches a reference/planning tool with no diagnostic claims).
 
