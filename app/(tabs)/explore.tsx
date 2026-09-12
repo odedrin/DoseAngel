@@ -2,12 +2,10 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Alert,
   LayoutAnimation,
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  UIManager,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -27,13 +25,6 @@ import type { GraphEntry, GraphRef, PlanCurve, PlanMarker } from '@/components/G
 import { useTourTarget } from '@/store/tourTargets';
 import { useTour } from '@/store/TourContext';
 import type { ActiveStopwatch, Plan } from '@/types/models';
-
-if (
-  Platform.OS === 'android' &&
-  UIManager.setLayoutAnimationEnabledExperimental
-) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
 
 const TICK_MS = 1000;
 
