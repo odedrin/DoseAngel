@@ -36,11 +36,13 @@ export function ConsentGate({ visible, onAgree }: Props) {
   const [agreed, setAgreed] = useState(false);
 
   const bgColor     = isDark ? '#0d0d0f' : '#F2F2F7';
-  const cardBg      = isDark ? '#1E2022' : '#fff';
   const textColor   = isDark ? '#ECEDEE' : '#11181C';
   const subColor    = isDark ? '#9BA1A6' : '#687076';
   const borderColor = isDark ? '#2A2D2F' : '#E5E5EA';
-  const accentColor = '#4ECDC4';
+  // Matches the light/dark split used for this same teal elsewhere (plan.tsx,
+  // explore.tsx) rather than the flat #4ECDC4 this screen used to hardcode —
+  // that value is tuned for dark backgrounds and runs pale on light ones.
+  const accentColor = isDark ? '#4ECDC4' : '#2BBDB4';
 
   function handleQuit() {
     if (Platform.OS === 'android') {
@@ -70,29 +72,39 @@ export function ConsentGate({ visible, onAgree }: Props) {
     >
       <View style={[styles.root, { backgroundColor: bgColor }]}>
 
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.icon}>📜</Text>
-          <Text style={[styles.title, { color: textColor }]}>Your agreement</Text>
-          <Text style={[styles.subtitle, { color: subColor }]}>
-            Please read and confirm before continuing
-          </Text>
-        </View>
-
+        {/* No boxed "card" here — a short accent rule and a numeral next to
+            each statement carry the structure instead, so it reads as a
+            deliberately set page rather than either a generic bordered
+            widget or plain unstyled text. The whole block centers
+            vertically via scrollContent's flexGrow + justifyContent, and
+            falls back to normal top-anchored scrolling if the content ever
+            grows taller than the screen (larger accessibility text sizes,
+            for example). */}
         <ScrollView
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          <View style={[styles.card, { backgroundColor: cardBg, borderColor }]}>
-            <Text style={[styles.cardBody, { color: textColor }]}>
-              I understand that drug use carries risk that harm reduction measures cannot
-              eliminate. I am responsible for my own choices and their consequences, and
-              DoseAngel is not responsible for any choice I make or its outcome.
-              {'\n\n'}
-              I understand that DoseAngel does not give medical advice, and that the data in
-              the app may contain errors or be incomplete.
-            </Text>
+          <View style={[styles.rule, { backgroundColor: accentColor }]} />
+          <Text style={[styles.title, { color: textColor }]}>Before you continue</Text>
+
+          <View style={styles.statements}>
+            <View style={styles.statementRow}>
+              <Text style={[styles.numeral, { color: accentColor }]}>01</Text>
+              <Text style={[styles.paragraph, { color: textColor }]}>
+                I understand that drug use carries risk that harm reduction measures cannot
+                eliminate. I am responsible for my own choices and their consequences, and
+                DoseAngel is not responsible for any choice I make or its outcome.
+              </Text>
+            </View>
+
+            <View style={styles.statementRow}>
+              <Text style={[styles.numeral, { color: accentColor }]}>02</Text>
+              <Text style={[styles.paragraph, { color: textColor }]}>
+                I understand that DoseAngel does not give medical advice, and that the data in
+                the app may contain errors or be incomplete.
+              </Text>
+            </View>
           </View>
         </ScrollView>
 
@@ -140,44 +152,45 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
   },
-  header: {
-    alignItems: 'center',
-    paddingTop: 48,
-    paddingBottom: 24,
-    paddingHorizontal: 24,
-    gap: 8,
-  },
-  icon: {
-    fontSize: 48,
-    marginBottom: 4,
+  rule: {
+    width: 40,
+    height: 3,
+    marginBottom: 18,
   },
   title: {
     fontSize: 26,
-    fontWeight: '700',
-    letterSpacing: -0.5,
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 15,
-    textAlign: 'center',
-    lineHeight: 21,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+    marginBottom: 30,
   },
   scroll: {
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-    gap: 12,
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 28,
+    paddingVertical: 24,
   },
-  card: {
-    borderRadius: 14,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: 18,
+  statements: {
+    gap: 28,
   },
-  cardBody: {
-    fontSize: 15,
-    lineHeight: 22,
+  statementRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 16,
+  },
+  numeral: {
+    width: 40,
+    flexShrink: 0,
+    fontSize: 30,
+    fontWeight: '800',
+    lineHeight: 32,
+  },
+  paragraph: {
+    flex: 1,
+    fontSize: 16,
+    lineHeight: 24,
   },
   footer: {
     padding: 20,
