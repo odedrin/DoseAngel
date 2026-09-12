@@ -72,7 +72,6 @@ export function ConsentGate({ visible, onAgree }: Props) {
 
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.icon}>📜</Text>
           <Text style={[styles.title, { color: textColor }]}>Your agreement</Text>
           <Text style={[styles.subtitle, { color: subColor }]}>
             Please read and confirm before continuing
@@ -146,10 +145,6 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
     paddingHorizontal: 24,
     gap: 8,
-  },
-  icon: {
-    fontSize: 48,
-    marginBottom: 4,
   },
   title: {
     fontSize: 26,
