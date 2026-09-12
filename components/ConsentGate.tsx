@@ -70,19 +70,24 @@ export function ConsentGate({ visible, onAgree }: Props) {
     >
       <View style={[styles.root, { backgroundColor: bgColor }]}>
 
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={[styles.title, { color: textColor }]}>Your agreement</Text>
-          <Text style={[styles.subtitle, { color: subColor }]}>
-            Please read and confirm before continuing
-          </Text>
-        </View>
-
+        {/* Header + card both live inside the ScrollView now, centered as
+            one block via scrollContent's flexGrow+justifyContent, rather
+            than the header being pinned to the top with a fixed paddingTop.
+            Falls back to normal top-anchored scrolling if the content ever
+            grows taller than the screen (e.g. larger accessibility text
+            sizes) - flexGrow: 1 only centers when there's spare room. */}
         <ScrollView
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
+          <View style={styles.header}>
+            <Text style={[styles.title, { color: textColor }]}>Your agreement</Text>
+            <Text style={[styles.subtitle, { color: subColor }]}>
+              Please read and confirm before continuing
+            </Text>
+          </View>
+
           <View style={[styles.card, { backgroundColor: cardBg, borderColor }]}>
             <Text style={[styles.cardBody, { color: textColor }]}>
               I understand that drug use carries risk that harm reduction measures cannot
@@ -141,10 +146,9 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    paddingTop: 48,
-    paddingBottom: 24,
-    paddingHorizontal: 24,
+    paddingHorizontal: 8,
     gap: 8,
+    marginBottom: 8,
   },
   title: {
     fontSize: 26,
@@ -161,8 +165,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingTop: 32,
     paddingHorizontal: 20,
-    paddingBottom: 16,
+    paddingBottom: 24,
     gap: 12,
   },
   card: {
