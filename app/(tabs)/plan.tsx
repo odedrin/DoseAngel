@@ -886,7 +886,7 @@ const styles = StyleSheet.create({
   warnNoteText: { fontSize: 12, lineHeight: 17 },
 
   dialogOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0,0,0,0.5)',
     alignItems: 'center',
     justifyContent: 'center',
