@@ -1135,6 +1135,10 @@ interface PlanMarker {
           <span style="color:var(--teal); font-weight:800; flex-shrink:0;">6</span>
           <div><strong>UI polish</strong><p>Improve overall visual appeal — typography, spacing, color usage, card design, and transitions. Goal is a polished, trustworthy feel appropriate for a safety-focused tool.</p></div>
         </li>
+        <li class="roadmap-item" style="border-left:3px solid var(--teal); display:flex; gap:14px; align-items:flex-start;">
+          <span style="color:var(--teal); font-weight:800; flex-shrink:0;">7</span>
+          <div><strong>Enable ProGuard/R8 &amp; resource shrinking (Android)</strong><p>Add the <code>expo-build-properties</code> config plugin with <code>enableProguardInReleaseBuilds</code> and <code>enableShrinkResourcesInReleaseBuilds</code> to shrink the release APK. Build 5's Android download size grew by ~8.85 MB after the Expo SDK 54→57 upgrade, and this is the direct lever to bring it back down. Also produces the mapping file needed to clear the Play Console "no deobfuscation file" warning, since nothing is currently obfuscated. Requires a full release-build smoke test before shipping, since R8 can occasionally strip code that's only reached via reflection.</p></div>
+        </li>
       </ol>
       <div class="limit-list">
         <div class="limit-item">
@@ -1162,6 +1166,10 @@ interface PlanMarker {
           <p>Per-substance reference showing which reagents to use (Marquis, Mecke, Simon's, etc.) and the expected color reactions for a positive result. Helps users verify substance identity before consumption. Sourced from published harm-reduction references (DanceSafe, Reagent.co.uk).</p>
         </div>
         <div class="roadmap-item">
+          <strong>Substance info screen</strong>
+          <p>Per-substance reference screen surfacing the essentials at a glance: phase timing (onset/comeup/peak/offset, pulled from the same curve data driving the graph), drug family/class, main effects, common risks, typical comedown, and a "Don't do" section (e.g. dangerous combinations, redosing before peak, mixing with alcohol). Sourced from established harm-reduction references (TripSit, DanceSafe, PsychonautWiki) with clear sourcing/citations shown in-app. Accessible from the type card or type detail view for built-in and substance-database entries.</p>
+        </div>
+        <div class="roadmap-item">
           <strong>Drag-to-reorder types</strong>
           <p>Allow users to reorder stopwatch types within each section (Custom, Built-in, Substances) via drag handles. Order is persisted across sessions. Currently disabled pending a reliable cross-session implementation.</p>
         </div>
@@ -1180,6 +1188,10 @@ interface PlanMarker {
         <div class="roadmap-item">
           <strong>User-defined interactions</strong>
           <p>Let users add their own interaction/combo entries — severity, description, source note — for pairs not covered by the curated TripSit-sourced INTERACTIONS database. Most relevant for substances created via + Add Substance, which currently have no interaction data at all and won't trigger warnings or show up in Combos. Would need a clear visual distinction from the curated, sourced entries (e.g. an "unverified / self-reported" badge) so users don't mistake a personal note for a vetted harm-reduction source.</p>
+        </div>
+        <div class="roadmap-item">
+          <strong>Investigate DrugsPRO app for ideas</strong>
+          <p>Review <a href="https://play.google.com/store/apps/details?id=web.protestkit.drugspro">DrugsPRO</a> (web.protestkit.drugspro), a similar offline harm-reduction app, for feature ideas. It pairs a 2,500+ substance info database (effects, duration, risks, pharmacology) with an interaction engine built on an expanded TripSit model, substance journaling with charts/widgets/notifications and sobriety streaks, and drug-checking tools (lab result lookups, pill alerts, reagent/TLC test interpretation), fully offline, no accounts, no data upload; worth comparing against DoseAngel's planned substance info screen, reagent testing guide, and history log entries above, and considering whether drug-checking/lab-result features are in scope.</p>
         </div>
       </div>
     </section>
