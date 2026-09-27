@@ -125,7 +125,7 @@ export function DisclosureModal({ visible, isFirstLaunch = false, onDismiss, onR
           <View style={styles.statements}>
             {sections.map((s, i) => (
               <View key={s.title} style={styles.statementRow}>
-                <Text style={[styles.numeral, { color: accentColor }]}>
+                <Text style={[styles.numeral, { color: accentColor }]} numberOfLines={1}>
                   {String(i + 1).padStart(2, '0')}
                 </Text>
                 <View style={styles.statementText}>
@@ -220,11 +220,15 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   numeral: {
-    width: 40,
+    // Wider than ConsentGate's 40: that screen only shows 01-02, but here
+    // "03"/"04" have wider glyphs and wrapped onto two lines at 40.
+    // tabular-nums gives every digit the same width so 01-04 line up.
+    width: 50,
     flexShrink: 0,
     fontSize: 30,
     fontWeight: '800',
     lineHeight: 32,
+    fontVariant: ['tabular-nums'],
   },
   statementText: {
     flex: 1,
