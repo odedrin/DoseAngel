@@ -1,0 +1,8 @@
+{
+  "name": "doseangel-website",
+  "private": true,
+  "description": "Static marketing site for doseangel.com. No dependencies on purpose — keeps Cloudflare Workers Builds from installing the whole app's node_modules just to deploy static HTML.",
+  "scripts": {
+    "build": "echo 'No build step — plain static HTML.'"
+  }
+}
